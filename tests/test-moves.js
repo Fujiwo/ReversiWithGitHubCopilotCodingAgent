@@ -50,8 +50,8 @@ TestFramework.addTest(moveSuite, 'makeMove should update the board correctly', f
     // Check that the appropriate disc is flipped
     assertEqual(gameState.board[3][3], BLACK, 'The WHITE disc at (3, 3) should be flipped to BLACK');
     
-    // Check that other positions are updated appropriately
-    assertEqual(gameState.board[3][4], BLACK, 'The BLACK disc at (3, 4) should be flipped to BLACK');
+    // Check that other positions remain unchanged
+    assertEqual(gameState.board[3][4], BLACK, 'Position (3, 4) should remain BLACK');
 });
 
 // Test flip counting

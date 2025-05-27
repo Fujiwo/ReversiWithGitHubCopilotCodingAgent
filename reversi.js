@@ -238,6 +238,11 @@ function makeComputerMove() {
  * @returns {Array} Selected move coordinates [row, col]
  */
 function makeEasyMove(validMoves) {
+    // If there's only one valid move, return it
+    if (validMoves.length === 1) {
+        return validMoves[0];
+    }
+    
     const randomIndex = Math.floor(Math.random() * validMoves.length);
     return validMoves[randomIndex];
 }
@@ -248,6 +253,11 @@ function makeEasyMove(validMoves) {
  * @returns {Array} Selected move coordinates [row, col]
  */
 function makeMediumMove(validMoves) {
+    // If there's only one valid move, return it
+    if (validMoves.length === 1) {
+        return validMoves[0];
+    }
+    
     // Score map for medium difficulty (prioritize corners and edges)
     const scoreMap = Array.from({ length: BOARD_SIZE }, 
         () => Array(BOARD_SIZE).fill(1));
@@ -299,6 +309,11 @@ function makeMediumMove(validMoves) {
  * @returns {Array} Selected move coordinates [row, col]
  */
 function makeHardMove(validMoves) {
+    // If there's only one valid move, return it
+    if (validMoves.length === 1) {
+        return validMoves[0];
+    }
+    
     const { board, computerDisc } = gameState;
     
     // First, prioritize corners if available

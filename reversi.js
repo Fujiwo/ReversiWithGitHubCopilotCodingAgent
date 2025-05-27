@@ -531,11 +531,15 @@ function checkGameState() {
     const playerMoves = getValidMoves(board, playerDisc);
     const computerMoves = getValidMoves(board, computerDisc);
     
+    // Game is over if both players have no valid moves
     if (playerMoves.length === 0 && computerMoves.length === 0) {
-        // Game over - no valid moves for either player
         gameState.isGameOver = true;
         updateStatusMessage();
-    } else if (gameState.currentPlayer === playerDisc && playerMoves.length === 0) {
+        return;
+    }
+    
+    // Handle case where current player has no valid moves
+    if (gameState.currentPlayer === playerDisc && playerMoves.length === 0) {
         // Player has no valid moves, switch to computer
         gameState.currentPlayer = computerDisc;
         updateStatusMessage();

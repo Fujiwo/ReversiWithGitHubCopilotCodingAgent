@@ -164,11 +164,11 @@ function handleCellClick(row, col) {
         gameState.currentPlayer = computerDisc;
         updateStatusMessage();
         
-        // Check game state
+        // Check game state - this might change player turn if no valid moves
         checkGameState();
         
-        // If game is not over, let computer make a move
-        if (!gameState.isGameOver) {
+        // If game is not over and it's still computer's turn, make computer move
+        if (!gameState.isGameOver && gameState.currentPlayer === computerDisc) {
             setTimeout(makeComputerMove, 500); // Delay for better UX
         }
     }
@@ -356,25 +356,27 @@ function evaluatePosition(row, col) {
  * @returns {number} Number of flips
  */
 function countFlips(board, row, col, player) {
+    // If the cell is not empty, no flips are possible
+    if (board[row][col] !== EMPTY) {
+        return 0;
+    }
+    
     return DIRECTIONS.reduce((totalFlips, [dx, dy]) => {
         let x = row + dx;
         let y = col + dy;
         let tempFlips = 0;
         
+        // Count opponent discs that would be flipped in this direction
         while (isInBounds(x, y) && board[x][y] !== EMPTY && board[x][y] !== player) {
             tempFlips++;
             x += dx;
             y += dy;
-            
-            if (!isInBounds(x, y) || board[x][y] === EMPTY) {
-                tempFlips = 0;
-                break;
-            }
-            
-            if (board[x][y] === player) {
-                totalFlips += tempFlips;
-                break;
-            }
+        }
+        
+        // If we reach a player disc at the end of the line, count the flips
+        // Otherwise, no flips in this direction
+        if (isInBounds(x, y) && board[x][y] === player && tempFlips > 0) {
+            totalFlips += tempFlips;
         }
         
         return totalFlips;
@@ -405,32 +407,8 @@ function isValidMove(board, row, col, player) {
         return false;
     }
     
-    // Check in all directions
-    return DIRECTIONS.some(([dx, dy]) => {
-        let x = row + dx;
-        let y = col + dy;
-        let hasOpponent = false;
-        
-        // Continue in this direction as long as we find opponent's discs
-        while (isInBounds(x, y) && board[x][y] !== EMPTY && board[x][y] !== player) {
-            hasOpponent = true;
-            x += dx;
-            y += dy;
-            
-            // If we reach the edge or an empty cell, this direction is invalid
-            if (!isInBounds(x, y) || board[x][y] === EMPTY) {
-                hasOpponent = false;
-                break;
-            }
-            
-            // If we find our own disc after opponent's discs, this is a valid move
-            if (board[x][y] === player) {
-                return hasOpponent;
-            }
-        }
-        
-        return false;
-    });
+    // A move is valid if it flips at least one opponent disc
+    return countFlips(board, row, col, player) > 0;
 }
 
 /**
@@ -470,23 +448,18 @@ function makeMove(board, row, col, player) {
         let y = col + dy;
         const discsToFlip = [];
         
+        // First collect all potential discs to flip in this direction
         while (isInBounds(x, y) && board[x][y] !== EMPTY && board[x][y] !== player) {
             discsToFlip.push([x, y]);
             x += dx;
             y += dy;
-            
-            if (!isInBounds(x, y) || board[x][y] === EMPTY) {
-                discsToFlip.length = 0;
-                break;
-            }
-            
-            if (board[x][y] === player) {
-                // Flip all discs in between
-                discsToFlip.forEach(([flipX, flipY]) => {
-                    board[flipX][flipY] = player;
-                });
-                break;
-            }
+        }
+        
+        // If we found our own disc at the end of the line, flip all collected discs
+        if (isInBounds(x, y) && board[x][y] === player && discsToFlip.length > 0) {
+            discsToFlip.forEach(([flipX, flipY]) => {
+                board[flipX][flipY] = player;
+            });
         }
     });
 }
@@ -503,8 +476,9 @@ function updateScores() {
         return acc;
     }, { black: 0, white: 0 });
     
-    DOM.blackScore.textContent = counts.black;
-    DOM.whiteScore.textContent = counts.white;
+    // Make sure to convert to string when setting textContent
+    DOM.blackScore.textContent = String(counts.black);
+    DOM.whiteScore.textContent = String(counts.white);
 }
 
 /**

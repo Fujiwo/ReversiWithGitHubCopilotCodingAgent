@@ -14,7 +14,7 @@ TestFramework.beforeEach(advancedBoardSuite, function() {
 // Test multiple flips in different directions
 TestFramework.addTest(advancedBoardSuite, 'makeMove should flip discs in multiple directions', function() {
     // Set up a board where a move will flip discs in multiple directions
-    // Create a pattern where BLACK can flip WHITE discs in 3 directions
+    // Create a pattern where BLACK can flip WHITE discs in multiple directions
     gameState.board[2][2] = WHITE;
     gameState.board[2][3] = WHITE;
     gameState.board[2][4] = BLACK;
@@ -22,10 +22,12 @@ TestFramework.addTest(advancedBoardSuite, 'makeMove should flip discs in multipl
     gameState.board[3][2] = WHITE;
     // (3,3) will be the move position
     gameState.board[3][4] = WHITE;
+    gameState.board[3][5] = BLACK;  // Add BLACK to make flipping valid
     
     gameState.board[4][2] = BLACK;
     gameState.board[4][3] = WHITE;
     gameState.board[4][4] = WHITE;
+    gameState.board[4][5] = BLACK;  // Add BLACK to make flipping valid
     
     // Make the move at (3,3)
     makeMove(gameState.board, 3, 3, BLACK);
@@ -123,16 +125,18 @@ TestFramework.addTest(advancedBoardSuite, 'countFlips should correctly count fli
     gameState.board[3][5] = BLACK;
     
     gameState.board[4][2] = BLACK;
+    gameState.board[4][4] = WHITE;
     gameState.board[5][3] = BLACK;
+    gameState.board[5][5] = BLACK; // Add BLACK disc to make diagonal flip valid
     
     // Count flips for a move at (0,0) by BLACK
     const flipsAt0_0 = countFlips(gameState.board, 0, 0, BLACK);
     
     // The move should flip discs in two directions: diagonal and horizontal
-    // Diagonal: (1,1), (2,2), (3,3) = 3 flips
+    // Diagonal: (1,1), (2,2), (3,3), (4,4) = 4 flips
     // Horizontal: none (no line to an existing BLACK)
     // Vertical: none (no line to an existing BLACK)
-    assertEqual(flipsAt0_0, 3, 'Move at (0,0) should flip 3 discs');
+    assertEqual(flipsAt0_0, 4, 'Move at (0,0) should flip 4 discs');
     
     // Count flips for a move at (0,4) by BLACK
     const flipsAt0_4 = countFlips(gameState.board, 0, 4, BLACK);

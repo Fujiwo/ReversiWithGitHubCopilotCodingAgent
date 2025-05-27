@@ -133,8 +133,10 @@ TestFramework.addTest(advancedAISuite, 'Different AI difficulties should make di
     testBoard[6][5] = BLACK;
     
     // Add pieces to make corners available
-    testBoard[1][0] = WHITE;
-    testBoard[0][1] = WHITE;
+    testBoard[1][1] = WHITE;
+    testBoard[0][1] = BLACK;
+    testBoard[1][0] = BLACK;
+    testBoard[2][2] = WHITE;
     
     // Store the original board and temporarily replace it
     const originalBoard = gameState.board;

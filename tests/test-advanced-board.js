@@ -125,16 +125,18 @@ TestFramework.addTest(advancedBoardSuite, 'countFlips should correctly count fli
     gameState.board[3][5] = BLACK;
     
     gameState.board[4][2] = BLACK;
+    gameState.board[4][4] = WHITE;
     gameState.board[5][3] = BLACK;
+    gameState.board[5][5] = BLACK; // Add BLACK disc to make diagonal flip valid
     
     // Count flips for a move at (0,0) by BLACK
     const flipsAt0_0 = countFlips(gameState.board, 0, 0, BLACK);
     
     // The move should flip discs in two directions: diagonal and horizontal
-    // Diagonal: (1,1), (2,2), (3,3) = 3 flips
+    // Diagonal: (1,1), (2,2), (3,3), (4,4) = 4 flips
     // Horizontal: none (no line to an existing BLACK)
     // Vertical: none (no line to an existing BLACK)
-    assertEqual(flipsAt0_0, 3, 'Move at (0,0) should flip 3 discs');
+    assertEqual(flipsAt0_0, 4, 'Move at (0,0) should flip 4 discs');
     
     // Count flips for a move at (0,4) by BLACK
     const flipsAt0_4 = countFlips(gameState.board, 0, 4, BLACK);

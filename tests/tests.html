@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reversi Tests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .test-suite {
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px 20px;
+        }
+        
+        .test-suite h2 {
+            margin-top: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        ul {
+            list-style-type: none;
+            padding-left: 10px;
+        }
+        
+        li {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .test-pass {
+            color: #2c7c26;
+            background-color: #e6f4e6;
+        }
+        
+        .test-fail {
+            color: #c62828;
+            background-color: #fde9e9;
+        }
+        
+        .error {
+            font-family: monospace;
+            background: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        
+        .test-summary {
+            margin-top: 20px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .pass {
+            color: #2c7c26;
+        }
+        
+        .fail {
+            color: #c62828;
+        }
+        
+        .run-button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .run-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reversi Game Tests</h1>
+    
+    <button id="run-tests" class="run-button">Run Tests</button>
+    
+    <div id="test-results"></div>
+    
+    <!-- Include the game code -->
+    <script src="../reversi.js"></script>
+    
+    <!-- Include the test framework -->
+    <script src="test-framework.js"></script>
+    
+    <!-- Include test files -->
+    <script src="test-board.js"></script>
+    <script src="test-moves.js"></script>
+    <script src="test-ai.js"></script>
+    
+    <script>
+        document.getElementById('run-tests').addEventListener('click', function() {
+            TestFramework.runTests();
+        });
+    </script>
+</body>
+</html>

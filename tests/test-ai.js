@@ -48,11 +48,11 @@ TestFramework.addTest(aiSuite, 'makeMediumMove should prioritize corners and edg
     testBoard[4][4] = WHITE;
     testBoard[5][5] = BLACK;
     
-    // This setup should make (2, 2) and (6, 6) valid moves for WHITE,
-    // with (0, 0) being a valid corner move.
+    // Set up the board to make the corner (0, 0) a valid move for WHITE
+    // We place BLACK discs in a diagonal line and a WHITE disc at the end
     testBoard[1][1] = BLACK;
-    testBoard[0][1] = WHITE;
-    testBoard[1][0] = WHITE;
+    testBoard[2][2] = BLACK;
+    testBoard[3][3] = WHITE;
     
     // Get valid moves for WHITE
     const validMoves = getValidMoves(testBoard, WHITE);
@@ -91,9 +91,10 @@ TestFramework.addTest(aiSuite, 'makeHardMove should prefer corners when availabl
         () => Array(BOARD_SIZE).fill(EMPTY));
     
     // Set up pieces to make a corner a valid move
+    // We place BLACK discs in a diagonal line and a WHITE disc at the end
     testBoard[1][1] = BLACK;
-    testBoard[0][1] = WHITE;
-    testBoard[1][0] = WHITE;
+    testBoard[2][2] = BLACK;
+    testBoard[3][3] = WHITE;
     
     // Get valid moves for WHITE
     const validMoves = getValidMoves(testBoard, WHITE);

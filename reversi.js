@@ -10,34 +10,39 @@ const EMPTY = 0;
 const BLACK = 1;
 const WHITE = 2;
 
-// Direction vectors for checking valid moves
+// Direction vectors for checking valid moves (diagonal, horizontal, vertical)
 const DIRECTIONS = [
     [-1, -1], [-1, 0], [-1, 1],
     [0, -1],           [0, 1],
     [1, -1],  [1, 0],  [1, 1]
 ];
 
-// Game state
-let gameBoard = [];
-let currentPlayer = BLACK; // Black always starts
-let gameOver = false;
-let playerDisc = BLACK;
-let computerDisc = WHITE;
-let computerThinking = false;
+// Game state variables
+const gameState = {
+    board: [],
+    currentPlayer: BLACK, // Black always starts
+    isGameOver: false,
+    playerDisc: BLACK,
+    computerDisc: WHITE,
+    isComputerThinking: false
+};
 
-// DOM elements
-const gameBoardElement = document.getElementById('game-board');
-const statusMessage = document.getElementById('status-message');
-const blackScoreElement = document.getElementById('black-score');
-const whiteScoreElement = document.getElementById('white-score');
-const difficultySelector = document.getElementById('difficulty');
-const restartButton = document.getElementById('restart-button');
+// DOM elements - using const for elements that won't be reassigned
+const DOM = {
+    gameBoard: document.getElementById('game-board'),
+    statusMessage: document.getElementById('status-message'),
+    blackScore: document.getElementById('black-score'),
+    whiteScore: document.getElementById('white-score'),
+    difficultySelector: document.getElementById('difficulty'),
+    restartButton: document.getElementById('restart-button')
+};
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', initGame);
-restartButton.addEventListener('click', restartGame);
-difficultySelector.addEventListener('change', () => {
-    if (currentPlayer === computerDisc && !gameOver) {
+DOM.restartButton.addEventListener('click', restartGame);
+DOM.difficultySelector.addEventListener('change', () => {
+    const { currentPlayer, computerDisc, isGameOver } = gameState;
+    if (currentPlayer === computerDisc && !isGameOver) {
         makeComputerMove();
     }
 });
@@ -56,15 +61,19 @@ function initGame() {
  * Create the game board in the DOM
  */
 function createGameBoard() {
-    gameBoardElement.innerHTML = '';
+    DOM.gameBoard.innerHTML = '';
+    
+    // Using template literals for more readable element creation
     for (let row = 0; row < BOARD_SIZE; row++) {
         for (let col = 0; col < BOARD_SIZE; col++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
             cell.dataset.row = row;
             cell.dataset.col = col;
+            
+            // Use arrow function to maintain context
             cell.addEventListener('click', () => handleCellClick(row, col));
-            gameBoardElement.appendChild(cell);
+            DOM.gameBoard.appendChild(cell);
         }
     }
 }
@@ -73,22 +82,23 @@ function createGameBoard() {
  * Initialize the board with starting positions
  */
 function initializeBoard() {
-    // Create empty board
-    gameBoard = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(EMPTY));
+    // Create empty board using Array.from for more modern approach
+    gameState.board = Array.from({ length: BOARD_SIZE }, 
+        () => Array(BOARD_SIZE).fill(EMPTY));
     
     // Set up starting positions
     const mid = BOARD_SIZE / 2;
-    gameBoard[mid - 1][mid - 1] = WHITE;
-    gameBoard[mid - 1][mid] = BLACK;
-    gameBoard[mid][mid - 1] = BLACK;
-    gameBoard[mid][mid] = WHITE;
+    gameState.board[mid - 1][mid - 1] = WHITE;
+    gameState.board[mid - 1][mid] = BLACK;
+    gameState.board[mid][mid - 1] = BLACK;
+    gameState.board[mid][mid] = WHITE;
     
     // Reset game state
-    currentPlayer = BLACK;
-    gameOver = false;
-    playerDisc = BLACK;
-    computerDisc = WHITE;
-    computerThinking = false;
+    gameState.currentPlayer = BLACK;
+    gameState.isGameOver = false;
+    gameState.playerDisc = BLACK;
+    gameState.computerDisc = WHITE;
+    gameState.isComputerThinking = false;
     
     // Update UI
     updateStatusMessage();
@@ -107,8 +117,8 @@ function renderBoard() {
     });
     
     // Mark valid moves for current player
-    if (currentPlayer === playerDisc) {
-        const validMoves = getValidMoves(gameBoard, currentPlayer);
+    if (gameState.currentPlayer === gameState.playerDisc) {
+        const validMoves = getValidMoves(gameState.board, gameState.currentPlayer);
         validMoves.forEach(([row, col]) => {
             const cellIndex = row * BOARD_SIZE + col;
             cells[cellIndex].classList.add('valid-move');
@@ -118,11 +128,12 @@ function renderBoard() {
     // Render discs
     for (let row = 0; row < BOARD_SIZE; row++) {
         for (let col = 0; col < BOARD_SIZE; col++) {
-            const cellValue = gameBoard[row][col];
+            const cellValue = gameState.board[row][col];
             if (cellValue !== EMPTY) {
                 const cellIndex = row * BOARD_SIZE + col;
                 const disc = document.createElement('div');
-                disc.className = `disc ${cellValue === BLACK ? 'black' : 'white'}`;
+                const discColor = cellValue === BLACK ? 'black' : 'white';
+                disc.className = `disc ${discColor}`;
                 cells[cellIndex].appendChild(disc);
             }
         }
@@ -131,29 +142,33 @@ function renderBoard() {
 
 /**
  * Handle a cell click
+ * @param {number} row - Row index
+ * @param {number} col - Column index
  */
 function handleCellClick(row, col) {
+    const { currentPlayer, playerDisc, computerDisc, isGameOver, isComputerThinking, board } = gameState;
+    
     // Ignore clicks if it's not the player's turn or game is over
-    if (currentPlayer !== playerDisc || gameOver || computerThinking) {
+    if (currentPlayer !== playerDisc || isGameOver || isComputerThinking) {
         return;
     }
     
     // Check if the move is valid
-    if (isValidMove(gameBoard, row, col, currentPlayer)) {
+    if (isValidMove(board, row, col, currentPlayer)) {
         // Make the move
-        makeMove(gameBoard, row, col, currentPlayer);
+        makeMove(board, row, col, currentPlayer);
         renderBoard();
         updateScores();
         
         // Switch player
-        currentPlayer = computerDisc;
+        gameState.currentPlayer = computerDisc;
         updateStatusMessage();
         
         // Check game state
         checkGameState();
         
         // If game is not over, let computer make a move
-        if (!gameOver) {
+        if (!gameState.isGameOver) {
             setTimeout(makeComputerMove, 500); // Delay for better UX
         }
     }
@@ -163,51 +178,53 @@ function handleCellClick(row, col) {
  * Make a computer move based on the selected difficulty
  */
 function makeComputerMove() {
-    if (gameOver || currentPlayer !== computerDisc) {
+    const { isGameOver, currentPlayer, computerDisc, playerDisc, board } = gameState;
+    
+    if (isGameOver || currentPlayer !== computerDisc) {
         return;
     }
     
-    computerThinking = true;
+    gameState.isComputerThinking = true;
     updateStatusMessage();
     
     // Short delay to show "thinking" message
     setTimeout(() => {
-        const validMoves = getValidMoves(gameBoard, computerDisc);
+        const validMoves = getValidMoves(board, computerDisc);
         
         if (validMoves.length === 0) {
             // Computer has no valid moves
-            currentPlayer = playerDisc;
-            computerThinking = false;
+            gameState.currentPlayer = playerDisc;
+            gameState.isComputerThinking = false;
             updateStatusMessage();
             checkGameState();
             return;
         }
         
-        const difficulty = difficultySelector.value;
-        let [row, col] = [0, 0];
+        const difficulty = DOM.difficultySelector.value;
+        let moveCoordinates;
         
-        switch (difficulty) {
-            case 'easy':
-                [row, col] = makeEasyMove(validMoves);
-                break;
-            case 'medium':
-                [row, col] = makeMediumMove(validMoves);
-                break;
-            case 'hard':
-                [row, col] = makeHardMove(validMoves);
-                break;
-            default:
-                [row, col] = makeMediumMove(validMoves);
-        }
+        // Use object literal for cleaner switch replacement
+        const difficultyStrategies = {
+            'easy': () => makeEasyMove(validMoves),
+            'medium': () => makeMediumMove(validMoves),
+            'hard': () => makeHardMove(validMoves),
+            'default': () => makeMediumMove(validMoves)
+        };
+        
+        // Get strategy function or use default
+        const strategy = difficultyStrategies[difficulty] || difficultyStrategies.default;
+        moveCoordinates = strategy();
+        
+        const [row, col] = moveCoordinates;
         
         // Make the move
-        makeMove(gameBoard, row, col, computerDisc);
+        makeMove(board, row, col, computerDisc);
         renderBoard();
         updateScores();
         
         // Switch player
-        currentPlayer = playerDisc;
-        computerThinking = false;
+        gameState.currentPlayer = playerDisc;
+        gameState.isComputerThinking = false;
         updateStatusMessage();
         
         // Check game state
@@ -217,6 +234,8 @@ function makeComputerMove() {
 
 /**
  * Make an easy move (random selection)
+ * @param {Array} validMoves - Array of valid moves
+ * @returns {Array} Selected move coordinates [row, col]
  */
 function makeEasyMove(validMoves) {
     const randomIndex = Math.floor(Math.random() * validMoves.length);
@@ -452,44 +471,42 @@ function makeMove(board, row, col, player) {
  * Update the scores display
  */
 function updateScores() {
-    let blackCount = 0;
-    let whiteCount = 0;
+    const { board } = gameState;
+    // Use reduce for more modern counting approach
+    const counts = board.flat().reduce((acc, cell) => {
+        if (cell === BLACK) acc.black++;
+        else if (cell === WHITE) acc.white++;
+        return acc;
+    }, { black: 0, white: 0 });
     
-    for (let row = 0; row < BOARD_SIZE; row++) {
-        for (let col = 0; col < BOARD_SIZE; col++) {
-            if (gameBoard[row][col] === BLACK) {
-                blackCount++;
-            } else if (gameBoard[row][col] === WHITE) {
-                whiteCount++;
-            }
-        }
-    }
-    
-    blackScoreElement.textContent = blackCount;
-    whiteScoreElement.textContent = whiteCount;
+    DOM.blackScore.textContent = counts.black;
+    DOM.whiteScore.textContent = counts.white;
 }
 
 /**
  * Update the status message
  */
 function updateStatusMessage() {
-    if (gameOver) {
-        const blackCount = parseInt(blackScoreElement.textContent);
-        const whiteCount = parseInt(whiteScoreElement.textContent);
+    const { isGameOver, isComputerThinking, currentPlayer, playerDisc } = gameState;
+    
+    if (isGameOver) {
+        const blackCount = parseInt(DOM.blackScore.textContent);
+        const whiteCount = parseInt(DOM.whiteScore.textContent);
         
+        // Use template literals for better readability
         if (blackCount > whiteCount) {
-            statusMessage.textContent = 'Black wins!';
+            DOM.statusMessage.textContent = 'Black wins!';
         } else if (whiteCount > blackCount) {
-            statusMessage.textContent = 'White wins!';
+            DOM.statusMessage.textContent = 'White wins!';
         } else {
-            statusMessage.textContent = "It's a tie!";
+            DOM.statusMessage.textContent = "It's a tie!";
         }
-    } else if (computerThinking) {
-        statusMessage.textContent = 'Computer is thinking...';
+    } else if (isComputerThinking) {
+        DOM.statusMessage.textContent = 'Computer is thinking...';
     } else if (currentPlayer === playerDisc) {
-        statusMessage.textContent = 'Your turn';
+        DOM.statusMessage.textContent = 'Your turn';
     } else {
-        statusMessage.textContent = "Computer's turn";
+        DOM.statusMessage.textContent = "Computer's turn";
     }
 }
 
@@ -497,21 +514,22 @@ function updateStatusMessage() {
  * Check if the game is over or if the current player has no valid moves
  */
 function checkGameState() {
-    const playerMoves = getValidMoves(gameBoard, playerDisc);
-    const computerMoves = getValidMoves(gameBoard, computerDisc);
+    const { board, playerDisc, computerDisc } = gameState;
+    const playerMoves = getValidMoves(board, playerDisc);
+    const computerMoves = getValidMoves(board, computerDisc);
     
     if (playerMoves.length === 0 && computerMoves.length === 0) {
         // Game over - no valid moves for either player
-        gameOver = true;
+        gameState.isGameOver = true;
         updateStatusMessage();
-    } else if (currentPlayer === playerDisc && playerMoves.length === 0) {
+    } else if (gameState.currentPlayer === playerDisc && playerMoves.length === 0) {
         // Player has no valid moves, switch to computer
-        currentPlayer = computerDisc;
+        gameState.currentPlayer = computerDisc;
         updateStatusMessage();
         setTimeout(makeComputerMove, 500);
-    } else if (currentPlayer === computerDisc && computerMoves.length === 0) {
+    } else if (gameState.currentPlayer === computerDisc && computerMoves.length === 0) {
         // Computer has no valid moves, switch to player
-        currentPlayer = playerDisc;
+        gameState.currentPlayer = playerDisc;
         updateStatusMessage();
     }
 }

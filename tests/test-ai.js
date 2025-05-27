@@ -7,32 +7,14 @@ const aiSuite = TestFramework.createSuite('AI Strategy Tests');
 
 // Set up a fresh board before each test
 TestFramework.beforeEach(aiSuite, function() {
-    // We need to create a test-specific copy of the game state
-    window.testGameState = {
-        board: [],
-        currentPlayer: BLACK,
-        isGameOver: false,
-        playerDisc: BLACK,
-        computerDisc: WHITE,
-        isComputerThinking: false
-    };
-    
-    // Initialize the board for testing
-    testGameState.board = Array.from({ length: BOARD_SIZE }, 
-        () => Array(BOARD_SIZE).fill(EMPTY));
-    
-    // Set up starting positions
-    const mid = BOARD_SIZE / 2;
-    testGameState.board[mid - 1][mid - 1] = WHITE;
-    testGameState.board[mid - 1][mid] = BLACK;
-    testGameState.board[mid][mid - 1] = BLACK;
-    testGameState.board[mid][mid] = WHITE;
+    // Reset the game state before each test
+    initTestEnvironment();
 });
 
 // Test easy AI move selection
 TestFramework.addTest(aiSuite, 'makeEasyMove should return a valid move from the available moves', function() {
     // Get valid moves for WHITE
-    const validMoves = getValidMoves(testGameState.board, WHITE);
+    const validMoves = getValidMoves(gameState.board, WHITE);
     
     // Mock Math.random to return a predictable value (0.5)
     const originalRandom = Math.random;
@@ -116,13 +98,21 @@ TestFramework.addTest(aiSuite, 'makeHardMove should prefer corners when availabl
     // Get valid moves for WHITE
     const validMoves = getValidMoves(testBoard, WHITE);
     
-    // Get hard move
-    window.gameState = { board: testBoard, computerDisc: WHITE };
-    const move = makeHardMove(validMoves);
+    // Store the original board and temporarily replace it
+    const originalBoard = gameState.board;
+    gameState.board = testBoard;
     
-    // Hard AI should pick the corner
-    assertEqual(move[0], 0, 'Hard AI should choose row 0 (corner)');
-    assertEqual(move[1], 0, 'Hard AI should choose column 0 (corner)');
+    try {
+        // Get hard move
+        const move = makeHardMove(validMoves);
+        
+        // Hard AI should pick the corner
+        assertEqual(move[0], 0, 'Hard AI should choose row 0 (corner)');
+        assertEqual(move[1], 0, 'Hard AI should choose column 0 (corner)');
+    } finally {
+        // Restore the original board
+        gameState.board = originalBoard;
+    }
 });
 
 // Test that the different AI levels return different moves when appropriate
@@ -154,20 +144,26 @@ TestFramework.addTest(aiSuite, 'Different AI levels should make different decisi
     // Make sure we have enough valid moves to test
     assertTrue(validMoves.length >= 3, 'Should have at least 3 valid moves for this test');
     
-    // Set up for hard move
-    window.gameState = { board: testBoard, computerDisc: WHITE };
+    // Store the original board and temporarily replace it
+    const originalBoard = gameState.board;
+    gameState.board = testBoard;
     
-    // Get moves from each strategy
-    // Use the same validMoves list for all to ensure fair comparison
-    const easyMove = makeEasyMove(validMoves);
-    const mediumMove = makeMediumMove(validMoves);
-    const hardMove = makeHardMove(validMoves);
-    
-    // At least one pair of strategies should make different moves
-    const movesAreDifferent = 
-        (easyMove[0] !== mediumMove[0] || easyMove[1] !== mediumMove[1]) ||
-        (easyMove[0] !== hardMove[0] || easyMove[1] !== hardMove[1]) ||
-        (mediumMove[0] !== hardMove[0] || mediumMove[1] !== hardMove[1]);
-    
-    assertTrue(movesAreDifferent, 'Different AI levels should make different moves when appropriate');
+    try {
+        // Get moves from each strategy
+        // Use the same validMoves list for all to ensure fair comparison
+        const easyMove = makeEasyMove(validMoves);
+        const mediumMove = makeMediumMove(validMoves);
+        const hardMove = makeHardMove(validMoves);
+        
+        // At least one pair of strategies should make different moves
+        const movesAreDifferent = 
+            (easyMove[0] !== mediumMove[0] || easyMove[1] !== mediumMove[1]) ||
+            (easyMove[0] !== hardMove[0] || easyMove[1] !== hardMove[1]) ||
+            (mediumMove[0] !== hardMove[0] || mediumMove[1] !== hardMove[1]);
+        
+        assertTrue(movesAreDifferent, 'Different AI levels should make different moves when appropriate');
+    } finally {
+        // Restore the original board
+        gameState.board = originalBoard;
+    }
 });

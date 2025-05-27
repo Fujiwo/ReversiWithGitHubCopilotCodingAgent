@@ -7,26 +7,8 @@ const boardSuite = TestFramework.createSuite('Board Tests');
 
 // Set up a fresh board before each test
 TestFramework.beforeEach(boardSuite, function() {
-    // We need to create a test-specific copy of the game state
-    window.testGameState = {
-        board: [],
-        currentPlayer: BLACK,
-        isGameOver: false,
-        playerDisc: BLACK,
-        computerDisc: WHITE,
-        isComputerThinking: false
-    };
-    
-    // Initialize the board for testing
-    testGameState.board = Array.from({ length: BOARD_SIZE }, 
-        () => Array(BOARD_SIZE).fill(EMPTY));
-    
-    // Set up starting positions
-    const mid = BOARD_SIZE / 2;
-    testGameState.board[mid - 1][mid - 1] = WHITE;
-    testGameState.board[mid - 1][mid] = BLACK;
-    testGameState.board[mid][mid - 1] = BLACK;
-    testGameState.board[mid][mid] = WHITE;
+    // Reset the game state before each test
+    initTestEnvironment();
 });
 
 // Test board initialization
@@ -42,13 +24,13 @@ TestFramework.addTest(boardSuite, 'Board should initialize with correct starting
     expectedBoard[mid][mid] = WHITE;
     
     // Assert the initial board matches the expected state
-    assertBoardEqual(testGameState.board, expectedBoard);
+    assertBoardEqual(gameState.board, expectedBoard);
 });
 
 // Test disc counting
 TestFramework.addTest(boardSuite, 'Should correctly count discs on the board', function() {
     // Count discs using the same approach as updateScores function
-    const counts = testGameState.board.flat().reduce((acc, cell) => {
+    const counts = gameState.board.flat().reduce((acc, cell) => {
         if (cell === BLACK) acc.black++;
         else if (cell === WHITE) acc.white++;
         return acc;
@@ -76,10 +58,10 @@ TestFramework.addTest(boardSuite, 'isInBounds should correctly identify valid co
 // Test board dimensions
 TestFramework.addTest(boardSuite, 'Board should have correct dimensions', function() {
     // Check board row count
-    assertEqual(testGameState.board.length, BOARD_SIZE, 'Board should have BOARD_SIZE rows');
+    assertEqual(gameState.board.length, BOARD_SIZE, 'Board should have BOARD_SIZE rows');
     
     // Check each row's column count
     for (let i = 0; i < BOARD_SIZE; i++) {
-        assertEqual(testGameState.board[i].length, BOARD_SIZE, `Row ${i} should have BOARD_SIZE columns`);
+        assertEqual(gameState.board[i].length, BOARD_SIZE, `Row ${i} should have BOARD_SIZE columns`);
     }
 });

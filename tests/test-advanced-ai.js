@@ -147,12 +147,12 @@ TestFramework.addTest(advancedAISuite, 'Different AI difficulties should make di
         const validMoves = getValidMoves(testBoard, WHITE);
         assertTrue(validMoves.length > 0, 'WHITE should have valid moves');
         
-        // Set up a "rigged" random function that always returns the last move for easy AI
+        // Set up a "rigged" random function that always returns the first move for easy AI
         const originalRandom = Math.random;
         
         // For easy AI, force it to select a move that's not a corner
         Math.random = function() {
-            return 0.99; // This should select the last move in the array
+            return 0.01; // This should select the first move in the array
         };
         
         // Get easy move

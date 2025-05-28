@@ -389,14 +389,19 @@ function makeHardMove(validMoves) {
     
     // Determine game phase for evaluation adjustments
     const totalDiscs = countDiscs(board).total;
-    const gamePhase = totalDiscs < 20 ? 'early' : (totalDiscs < 40 ? 'mid' : 'late');
+    const gamePhase = totalDiscs < 20 ? 'early' : (totalDiscs < 50 ? 'mid' : 'late');
     
     // Use minimax with alpha-beta pruning to find the best move
     let bestScore = -Infinity;
     let bestMove = validMoves[0];
     
-    // Adjust search depth based on number of valid moves for performance
-    const searchDepth = validMoves.length > 10 ? 2 : (validMoves.length > 5 ? 3 : 4);
+    // Adjust search depth based on number of valid moves and game phase for performance
+    let searchDepth;
+    if (gamePhase === 'late') {
+        searchDepth = validMoves.length > 8 ? 3 : (validMoves.length > 4 ? 4 : 5);
+    } else {
+        searchDepth = validMoves.length > 10 ? 2 : (validMoves.length > 6 ? 3 : 4);
+    }
     
     for (const move of validMoves) {
         const [row, col] = move;
@@ -531,6 +536,45 @@ function evaluateBoard(board, maxPlayer, minPlayer, gamePhase) {
         }
     }
     
+    // Potential mobility (count of empty squares adjacent to opponent's discs)
+    let potentialMobility = 0;
+    for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+            if (board[row][col] === EMPTY) {
+                // Check if this empty square is adjacent to opponent's discs
+                let adjacentToOpponent = false;
+                for (const [dx, dy] of DIRECTIONS) {
+                    const newRow = row + dx;
+                    const newCol = col + dy;
+                    if (isInBounds(newRow, newCol) && board[newRow][newCol] === minPlayer) {
+                        adjacentToOpponent = true;
+                        break;
+                    }
+                }
+                if (adjacentToOpponent) {
+                    potentialMobility++;
+                }
+            }
+        }
+    }
+    
+    // Edge control (controlling stable edges)
+    let edgeControl = 0;
+    // Check horizontal edges (top and bottom rows)
+    for (let col = 0; col < BOARD_SIZE; col++) {
+        if (board[0][col] === maxPlayer) edgeControl++;
+        if (board[0][col] === minPlayer) edgeControl--;
+        if (board[BOARD_SIZE - 1][col] === maxPlayer) edgeControl++;
+        if (board[BOARD_SIZE - 1][col] === minPlayer) edgeControl--;
+    }
+    // Check vertical edges (leftmost and rightmost columns)
+    for (let row = 0; row < BOARD_SIZE; row++) {
+        if (board[row][0] === maxPlayer) edgeControl++;
+        if (board[row][0] === minPlayer) edgeControl--;
+        if (board[row][BOARD_SIZE - 1] === maxPlayer) edgeControl++;
+        if (board[row][BOARD_SIZE - 1] === minPlayer) edgeControl--;
+    }
+    
     // Position score based on the static position weights
     let positionScore = 0;
     for (let row = 0; row < BOARD_SIZE; row++) {
@@ -544,26 +588,32 @@ function evaluateBoard(board, maxPlayer, minPlayer, gamePhase) {
     }
     
     // Adjust weights based on game phase
-    let discParityWeight, mobilityWeight, cornerWeight, positionWeight;
+    let discParityWeight, mobilityWeight, cornerWeight, positionWeight, edgeWeight, potentialMobilityWeight;
     
     switch (gamePhase) {
         case 'early':
-            discParityWeight = 0.2;
-            mobilityWeight = 2.0;
-            cornerWeight = 3.5;
+            discParityWeight = 0.1;
+            mobilityWeight = 2.5;
+            cornerWeight = 4.0;
             positionWeight = 1.0;
+            edgeWeight = 1.5;
+            potentialMobilityWeight = 1.0;
             break;
         case 'mid':
             discParityWeight = 0.8;
-            mobilityWeight = 1.5;
-            cornerWeight = 2.5;
+            mobilityWeight = 2.0;
+            cornerWeight = 3.0;
             positionWeight = 1.0;
+            edgeWeight = 1.0;
+            potentialMobilityWeight = 0.5;
             break;
         case 'late':
-            discParityWeight = 3.0;
-            mobilityWeight = 0.5;
+            discParityWeight = 3.5;
+            mobilityWeight = 1.0;
             cornerWeight = 2.0;
-            positionWeight = 0.8;
+            positionWeight = 0.5;
+            edgeWeight = 0.5;
+            potentialMobilityWeight = 0.0;
             break;
     }
     
@@ -571,7 +621,9 @@ function evaluateBoard(board, maxPlayer, minPlayer, gamePhase) {
     return discParityWeight * discParity + 
            mobilityWeight * mobility + 
            cornerWeight * cornerScore + 
-           positionWeight * positionScore;
+           positionWeight * positionScore +
+           edgeWeight * edgeControl +
+           potentialMobilityWeight * potentialMobility;
 }
 
 /**

@@ -30,6 +30,10 @@
                     <span>Move: </span>
                     <span id="move-counter">0</span>
                 </div>
+                <div class="board-coverage">
+                    <span>Board: </span>
+                    <span id="board-coverage">6%</span>
+                </div>
             </div>
         </section>
         
@@ -49,6 +53,26 @@
             
             <button id="restart-button" aria-label="Restart the game">Restart Game</button>
             <button id="undo-button" aria-label="Undo last move" disabled>Undo Move</button>
+            <button id="help-button" aria-label="Show game instructions">Help</button>
+        </section>
+        
+        <section class="help-section" id="help-section" style="display: none;">
+            <div class="help-content">
+                <h3>How to Play Reversi</h3>
+                <ul>
+                    <li>Click on a valid move (highlighted cells) to place your disc</li>
+                    <li>Capture opponent discs by trapping them between your discs</li>
+                    <li>The game ends when no valid moves remain</li>
+                    <li>The player with the most discs wins</li>
+                </ul>
+                <h3>Keyboard Controls</h3>
+                <ul>
+                    <li><kbd>Arrow Keys</kbd> - Navigate the board</li>
+                    <li><kbd>Enter/Space</kbd> - Place disc</li>
+                    <li><kbd>Ctrl+U</kbd> - Undo move</li>
+                    <li><kbd>Ctrl+R</kbd> - Restart game</li>
+                </ul>
+            </div>
         </section>
     </main>
     

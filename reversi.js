@@ -39,13 +39,17 @@ const DOM = {
     difficultySelector: document.getElementById('difficulty'),
     restartButton: document.getElementById('restart-button'),
     undoButton: document.getElementById('undo-button'),
-    moveCounter: document.getElementById('move-counter')
+    helpButton: document.getElementById('help-button'),
+    helpSection: document.getElementById('help-section'),
+    moveCounter: document.getElementById('move-counter'),
+    boardCoverage: document.getElementById('board-coverage')
 };
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', initGame);
 DOM.restartButton.addEventListener('click', restartGame);
 DOM.undoButton.addEventListener('click', undoLastMove);
+DOM.helpButton.addEventListener('click', toggleHelp);
 DOM.difficultySelector.addEventListener('change', () => {
     const { currentPlayer, computerDisc, isGameOver } = gameState;
     if (currentPlayer === computerDisc && !isGameOver) {
@@ -233,6 +237,7 @@ function makeComputerMove() {
     }
     
     gameState.isComputerThinking = true;
+    DOM.gameBoard.classList.add('loading');
     updateStatusMessage();
     
     // Short delay to show "thinking" message
@@ -243,6 +248,7 @@ function makeComputerMove() {
             // Computer has no valid moves
             gameState.currentPlayer = playerDisc;
             gameState.isComputerThinking = false;
+            DOM.gameBoard.classList.remove('loading');
             updateStatusMessage();
             checkGameState();
             return;
@@ -277,6 +283,7 @@ function makeComputerMove() {
         // Switch player
         gameState.currentPlayer = playerDisc;
         gameState.isComputerThinking = false;
+        DOM.gameBoard.classList.remove('loading');
         updateStatusMessage();
         
         // Check game state
@@ -550,6 +557,11 @@ function updateScores() {
     // Make sure to convert to string when setting textContent
     DOM.blackScore.textContent = String(counts.black);
     DOM.whiteScore.textContent = String(counts.white);
+    
+    // Update board coverage
+    const totalDiscs = counts.black + counts.white;
+    const coverage = Math.round((totalDiscs / (BOARD_SIZE * BOARD_SIZE)) * 100);
+    DOM.boardCoverage.textContent = `${coverage}%`;
 }
 
 /**
@@ -558,20 +570,24 @@ function updateScores() {
 function updateStatusMessage() {
     const { isGameOver, isComputerThinking, currentPlayer, playerDisc } = gameState;
     
+    // Remove any existing status classes
+    DOM.statusMessage.classList.remove('thinking');
+    
     if (isGameOver) {
         const blackCount = parseInt(DOM.blackScore.textContent);
         const whiteCount = parseInt(DOM.whiteScore.textContent);
         
         // Use template literals for better readability
         if (blackCount > whiteCount) {
-            DOM.statusMessage.textContent = 'Black wins!';
+            DOM.statusMessage.textContent = 'Black wins! 🎉';
         } else if (whiteCount > blackCount) {
-            DOM.statusMessage.textContent = 'White wins!';
+            DOM.statusMessage.textContent = 'White wins! 🎉';
         } else {
-            DOM.statusMessage.textContent = "It's a tie!";
+            DOM.statusMessage.textContent = "It's a tie! 🤝";
         }
     } else if (isComputerThinking) {
         DOM.statusMessage.textContent = 'Computer is thinking...';
+        DOM.statusMessage.classList.add('thinking');
     } else if (currentPlayer === playerDisc) {
         DOM.statusMessage.textContent = 'Your turn';
     } else {
@@ -787,4 +803,14 @@ function handleKeyboardInput(event) {
         const newIndex = newRow * BOARD_SIZE + newCol;
         cells[newIndex].focus();
     }
+}
+
+/**
+ * Toggle help section visibility
+ */
+function toggleHelp() {
+    const isVisible = DOM.helpSection.style.display !== 'none';
+    DOM.helpSection.style.display = isVisible ? 'none' : 'block';
+    DOM.helpButton.textContent = isVisible ? 'Help' : 'Hide Help';
+    DOM.helpButton.setAttribute('aria-expanded', !isVisible);
 }

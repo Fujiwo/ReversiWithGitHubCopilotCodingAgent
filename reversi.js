@@ -484,24 +484,17 @@ function makeMove(board, row, col, player) {
  */
 function updateScores() {
     const { board } = gameState;
-    // Use reduce for more modern counting approach
-    let blackCount = 0;
-    let whiteCount = 0;
     
-    // Count each cell manually to ensure accuracy
-    for (let i = 0; i < BOARD_SIZE; i++) {
-        for (let j = 0; j < BOARD_SIZE; j++) {
-            if (board[i][j] === BLACK) {
-                blackCount++;
-            } else if (board[i][j] === WHITE) {
-                whiteCount++;
-            }
-        }
-    }
+    // Use reduce for a more modern counting approach
+    const counts = board.flat().reduce((acc, cell) => {
+        if (cell === BLACK) acc.black++;
+        else if (cell === WHITE) acc.white++;
+        return acc;
+    }, { black: 0, white: 0 });
     
     // Make sure to convert to string when setting textContent
-    DOM.blackScore.textContent = String(blackCount);
-    DOM.whiteScore.textContent = String(whiteCount);
+    DOM.blackScore.textContent = String(counts.black);
+    DOM.whiteScore.textContent = String(counts.white);
 }
 
 /**

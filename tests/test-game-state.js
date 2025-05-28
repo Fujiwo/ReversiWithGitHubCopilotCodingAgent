@@ -82,8 +82,8 @@ TestFramework.addTest(gameStateSuite, 'checkGameState should switch turns when c
     
     // Create a pattern where WHITE has a valid move but BLACK doesn't
     gameState.board[0][0] = WHITE;
-    gameState.board[0][1] = WHITE;
-    gameState.board[0][2] = EMPTY; // WHITE can play here
+    gameState.board[0][1] = BLACK; // BLACK disc to flip
+    gameState.board[0][2] = EMPTY; // WHITE can play here and flip the BLACK at (0,1)
     
     // Set current player to BLACK
     gameState.currentPlayer = BLACK;

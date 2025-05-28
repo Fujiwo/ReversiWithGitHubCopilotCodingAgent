@@ -366,7 +366,7 @@ function makeMediumMove(validMoves) {
 }
 
 /**
- * Make a hard move (uses position evaluation and look-ahead)
+ * Make a hard move (uses minimax with alpha-beta pruning and strategic evaluation)
  * @param {Array} validMoves - Array of valid moves
  * @returns {Array} Selected move coordinates [row, col]
  */
@@ -377,6 +377,7 @@ function makeHardMove(validMoves) {
     }
     
     const { board, computerDisc } = gameState;
+    const opponentDisc = computerDisc === BLACK ? WHITE : BLACK;
     
     // First, prioritize corners if available
     const cornerMove = validMoves.find(([row, col]) => 
@@ -386,20 +387,191 @@ function makeHardMove(validMoves) {
         return cornerMove;
     }
     
-    // Otherwise, find the best move based on flips and position
-    return validMoves.reduce((bestMove, currentMove) => {
-        const [currentRow, currentCol] = currentMove;
-        const flips = countFlips(board, currentRow, currentCol, computerDisc);
-        const positionScore = evaluatePosition(currentRow, currentCol);
-        const currentScore = flips * 2 + positionScore;
+    // Determine game phase for evaluation adjustments
+    const totalDiscs = countDiscs(board).total;
+    const gamePhase = totalDiscs < 20 ? 'early' : (totalDiscs < 40 ? 'mid' : 'late');
+    
+    // Use minimax with alpha-beta pruning to find the best move
+    let bestScore = -Infinity;
+    let bestMove = validMoves[0];
+    
+    // Adjust search depth based on number of valid moves for performance
+    const searchDepth = validMoves.length > 10 ? 2 : (validMoves.length > 5 ? 3 : 4);
+    
+    for (const move of validMoves) {
+        const [row, col] = move;
         
-        const [bestRow, bestCol] = bestMove;
-        const bestFlips = countFlips(board, bestRow, bestCol, computerDisc);
-        const bestPositionScore = evaluatePosition(bestRow, bestCol);
-        const bestScore = bestFlips * 2 + bestPositionScore;
+        // Create a copy of the board to simulate the move
+        const boardCopy = JSON.parse(JSON.stringify(board));
         
-        return currentScore > bestScore ? currentMove : bestMove;
-    }, validMoves[0]);
+        // Make the move on the copied board
+        makeMove(boardCopy, row, col, computerDisc);
+        
+        // Calculate the score using minimax
+        const score = minimax(boardCopy, searchDepth - 1, -Infinity, Infinity, false, computerDisc, opponentDisc, gamePhase);
+        
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = move;
+        }
+    }
+    
+    return bestMove;
+}
+
+/**
+ * Minimax algorithm with alpha-beta pruning for AI decision making
+ * @param {Array} board - Game board state
+ * @param {number} depth - Remaining search depth
+ * @param {number} alpha - Alpha value for pruning
+ * @param {number} beta - Beta value for pruning
+ * @param {boolean} isMaximizingPlayer - Whether the current player is maximizing
+ * @param {number} maxPlayer - Disc color of the maximizing player
+ * @param {number} minPlayer - Disc color of the minimizing player
+ * @param {string} gamePhase - Current game phase (early, mid, late)
+ * @returns {number} Best score for the current board position
+ */
+function minimax(board, depth, alpha, beta, isMaximizingPlayer, maxPlayer, minPlayer, gamePhase) {
+    const currentPlayer = isMaximizingPlayer ? maxPlayer : minPlayer;
+    
+    // Terminal condition: reached depth limit or game over
+    if (depth === 0) {
+        return evaluateBoard(board, maxPlayer, minPlayer, gamePhase);
+    }
+    
+    const validMoves = getValidMoves(board, currentPlayer);
+    
+    // If no valid moves, either pass or end game
+    if (validMoves.length === 0) {
+        // Check if the opponent has any moves
+        const opponentValidMoves = getValidMoves(board, currentPlayer === BLACK ? WHITE : BLACK);
+        if (opponentValidMoves.length === 0) {
+            // Game over, count discs
+            const { black, white } = countDiscs(board);
+            const scoreDiff = maxPlayer === BLACK ? black - white : white - black;
+            return scoreDiff * 1000; // High value for winning, low for losing
+        }
+        // Need to pass, evaluate from opponent's perspective
+        return minimax(board, depth - 1, alpha, beta, !isMaximizingPlayer, maxPlayer, minPlayer, gamePhase);
+    }
+    
+    if (isMaximizingPlayer) {
+        let maxEval = -Infinity;
+        
+        for (const [row, col] of validMoves) {
+            // Create a copy of the board to simulate the move
+            const boardCopy = JSON.parse(JSON.stringify(board));
+            makeMove(boardCopy, row, col, currentPlayer);
+            
+            const eval = minimax(boardCopy, depth - 1, alpha, beta, false, maxPlayer, minPlayer, gamePhase);
+            maxEval = Math.max(maxEval, eval);
+            
+            // Alpha-beta pruning
+            alpha = Math.max(alpha, eval);
+            if (beta <= alpha) {
+                break;
+            }
+        }
+        
+        return maxEval;
+    } else {
+        let minEval = Infinity;
+        
+        for (const [row, col] of validMoves) {
+            // Create a copy of the board to simulate the move
+            const boardCopy = JSON.parse(JSON.stringify(board));
+            makeMove(boardCopy, row, col, currentPlayer);
+            
+            const eval = minimax(boardCopy, depth - 1, alpha, beta, true, maxPlayer, minPlayer, gamePhase);
+            minEval = Math.min(minEval, eval);
+            
+            // Alpha-beta pruning
+            beta = Math.min(beta, eval);
+            if (beta <= alpha) {
+                break;
+            }
+        }
+        
+        return minEval;
+    }
+}
+
+/**
+ * Enhanced board evaluation function for the minimax algorithm
+ * @param {Array} board - Game board
+ * @param {number} maxPlayer - Disc color of the maximizing player
+ * @param {number} minPlayer - Disc color of the minimizing player
+ * @param {string} gamePhase - Current game phase (early, mid, late)
+ * @returns {number} Evaluation score of the board position
+ */
+function evaluateBoard(board, maxPlayer, minPlayer, gamePhase) {
+    // Count discs of each color
+    const { black, white } = countDiscs(board);
+    
+    // Disc parity (difference in disc count)
+    const discParity = maxPlayer === BLACK ? black - white : white - black;
+    
+    // Mobility (number of valid moves for each player)
+    const maxPlayerMobility = getValidMoves(board, maxPlayer).length;
+    const minPlayerMobility = getValidMoves(board, minPlayer).length;
+    const mobility = maxPlayerMobility - minPlayerMobility;
+    
+    // Corner control
+    const corners = [
+        [0, 0], [0, BOARD_SIZE - 1], 
+        [BOARD_SIZE - 1, 0], [BOARD_SIZE - 1, BOARD_SIZE - 1]
+    ];
+    
+    let cornerScore = 0;
+    for (const [row, col] of corners) {
+        if (board[row][col] === maxPlayer) {
+            cornerScore += 25;
+        } else if (board[row][col] === minPlayer) {
+            cornerScore -= 25;
+        }
+    }
+    
+    // Position score based on the static position weights
+    let positionScore = 0;
+    for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+            if (board[row][col] === maxPlayer) {
+                positionScore += evaluatePosition(row, col);
+            } else if (board[row][col] === minPlayer) {
+                positionScore -= evaluatePosition(row, col);
+            }
+        }
+    }
+    
+    // Adjust weights based on game phase
+    let discParityWeight, mobilityWeight, cornerWeight, positionWeight;
+    
+    switch (gamePhase) {
+        case 'early':
+            discParityWeight = 0.2;
+            mobilityWeight = 2.0;
+            cornerWeight = 3.5;
+            positionWeight = 1.0;
+            break;
+        case 'mid':
+            discParityWeight = 0.8;
+            mobilityWeight = 1.5;
+            cornerWeight = 2.5;
+            positionWeight = 1.0;
+            break;
+        case 'late':
+            discParityWeight = 3.0;
+            mobilityWeight = 0.5;
+            cornerWeight = 2.0;
+            positionWeight = 0.8;
+            break;
+    }
+    
+    // Combine all factors with appropriate weights
+    return discParityWeight * discParity + 
+           mobilityWeight * mobility + 
+           cornerWeight * cornerScore + 
+           positionWeight * positionScore;
 }
 
 /**
@@ -422,6 +594,28 @@ function evaluatePosition(row, col) {
     ];
     
     return positionWeights[row][col];
+}
+
+/**
+ * Count the number of discs of each color on the board
+ * @param {Array} board - Game board
+ * @returns {Object} Object with counts of black, white, and total discs
+ */
+function countDiscs(board) {
+    let black = 0;
+    let white = 0;
+    
+    for (let row = 0; row < BOARD_SIZE; row++) {
+        for (let col = 0; col < BOARD_SIZE; col++) {
+            if (board[row][col] === BLACK) {
+                black++;
+            } else if (board[row][col] === WHITE) {
+                white++;
+            }
+        }
+    }
+    
+    return { black, white, total: black + white };
 }
 
 /**

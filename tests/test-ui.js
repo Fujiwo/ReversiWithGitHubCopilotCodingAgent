@@ -175,9 +175,15 @@ TestFramework.addTest(uiSuite, 'Computer should make a move after player makes a
         const originalRenderBoard = renderBoard;
         const originalUpdateScores = updateScores;
         const originalCheckGameState = checkGameState;
+        const originalSetTimeout = setTimeout;
         
         renderBoard = function() {};
         updateScores = function() {};
+        
+        // Mock setTimeout to execute immediately
+        window.setTimeout = function(callback) {
+            callback();
+        };
         
         // Replace checkGameState with one that keeps computer as current player
         checkGameState = function() {
@@ -197,6 +203,7 @@ TestFramework.addTest(uiSuite, 'Computer should make a move after player makes a
             renderBoard = originalRenderBoard;
             updateScores = originalUpdateScores;
             checkGameState = originalCheckGameState;
+            window.setTimeout = originalSetTimeout;
         }
     } finally {
         // Restore original DOM element

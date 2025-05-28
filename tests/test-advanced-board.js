@@ -15,10 +15,12 @@ TestFramework.beforeEach(advancedBoardSuite, function() {
 TestFramework.addTest(advancedBoardSuite, 'makeMove should flip discs in multiple directions', function() {
     // Set up a board where a move will flip discs in multiple directions
     // Create a pattern where BLACK can flip WHITE discs in multiple directions
+    gameState.board[1][3] = BLACK;  // Add BLACK to make vertical flip valid
     gameState.board[2][2] = WHITE;
     gameState.board[2][3] = WHITE;
     gameState.board[2][4] = BLACK;
     
+    gameState.board[3][1] = BLACK;  // Add BLACK to make horizontal flip valid
     gameState.board[3][2] = WHITE;
     // (3,3) will be the move position
     gameState.board[3][4] = WHITE;
@@ -28,6 +30,7 @@ TestFramework.addTest(advancedBoardSuite, 'makeMove should flip discs in multipl
     gameState.board[4][3] = WHITE;
     gameState.board[4][4] = WHITE;
     gameState.board[4][5] = BLACK;  // Add BLACK to make flipping valid
+    gameState.board[5][3] = BLACK;  // Add BLACK to make vertical flip valid
     
     // Make the move at (3,3)
     makeMove(gameState.board, 3, 3, BLACK);
@@ -80,17 +83,17 @@ TestFramework.addTest(advancedBoardSuite, 'Corner positions should be captured c
 // Test edge case: no valid moves for both players
 TestFramework.addTest(advancedBoardSuite, 'Game should detect when neither player has valid moves', function() {
     // Create a board with no valid moves for either player
-    // but not completely filled
+    // Fill most of the board, leaving only isolated empty cells
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
-            // Alternating pattern of BLACK and WHITE
-            gameState.board[i][j] = (i + j) % 2 === 0 ? BLACK : WHITE;
+            // Fill with BLACK and WHITE in a pattern that prevents valid moves
+            gameState.board[i][j] = (i < 4) ? BLACK : WHITE;
         }
     }
     
-    // Leave a few cells empty but positioned so they don't create valid moves
-    gameState.board[0][0] = EMPTY;
-    gameState.board[7][7] = EMPTY;
+    // Leave a few isolated empty cells that don't create valid moves
+    gameState.board[3][7] = EMPTY;  // Surrounded by BLACK
+    gameState.board[4][0] = EMPTY;  // Surrounded by WHITE
     
     // Assert that there are no valid moves for either player
     const blackMoves = getValidMoves(gameState.board, BLACK);
@@ -147,15 +150,13 @@ TestFramework.addTest(advancedBoardSuite, 'countFlips should correctly count fli
 
 // Test board state after a full game simulation
 TestFramework.addTest(advancedBoardSuite, 'Board should maintain consistency throughout a simulated game', function() {
-    // Define a sequence of moves for a mini-game simulation
+    // Define a sequence of valid moves for a mini-game simulation
     const moves = [
-        { player: BLACK, row: 2, col: 3 },
-        { player: WHITE, row: 2, col: 2 },
-        { player: BLACK, row: 1, col: 1 },
-        { player: WHITE, row: 0, col: 0 },
-        { player: BLACK, row: 0, col: 2 },
-        { player: WHITE, row: 0, col: 1 },
-        { player: BLACK, row: 3, col: 2 }
+        { player: BLACK, row: 2, col: 3 },  // Valid opening move
+        { player: WHITE, row: 2, col: 2 },  // Valid response
+        { player: BLACK, row: 3, col: 2 },  // Valid move
+        { player: WHITE, row: 4, col: 2 },  // Valid move
+        { player: BLACK, row: 5, col: 3 },  // Valid move
     ];
     
     // Execute the moves

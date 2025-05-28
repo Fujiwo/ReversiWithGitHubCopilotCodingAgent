@@ -179,9 +179,9 @@ TestFramework.addTest(uiSuite, 'Computer should make a move after player makes a
         renderBoard = function() {};
         updateScores = function() {};
         
-        // Replace checkGameState with one that switches player and calls makeComputerMove
+        // Replace checkGameState with one that keeps computer as current player
         checkGameState = function() {
-            // Switch to computer's turn
+            // Keep computer as current player (simulating computer has valid moves)
             gameState.currentPlayer = WHITE;
         };
         

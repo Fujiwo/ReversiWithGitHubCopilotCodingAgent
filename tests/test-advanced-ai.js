@@ -16,15 +16,14 @@ TestFramework.addTest(advancedAISuite, 'AI should handle scenarios with only one
     // Set up a board where WHITE has only one valid move
     for (let i = 0; i < BOARD_SIZE; i++) {
         for (let j = 0; j < BOARD_SIZE; j++) {
-            gameState.board[i][j] = BLACK;
+            gameState.board[i][j] = EMPTY;
         }
     }
     
-    // Set up a single valid move for WHITE
+    // Set up a position where (0,0) is the only valid move for WHITE
     gameState.board[0][0] = EMPTY;
     gameState.board[0][1] = BLACK;
-    gameState.board[1][0] = BLACK;
-    gameState.board[1][1] = WHITE;
+    gameState.board[0][2] = WHITE;
     
     // Get valid moves for WHITE
     const validMoves = getValidMoves(gameState.board, WHITE);

@@ -24,7 +24,10 @@ const gameState = {
     isGameOver: false,
     playerDisc: BLACK,
     computerDisc: WHITE,
-    isComputerThinking: false
+    isComputerThinking: false,
+    moveHistory: [],
+    moveCounter: 0,
+    lastMove: null
 };
 
 // DOM elements - using const for elements that won't be reassigned
@@ -34,12 +37,19 @@ const DOM = {
     blackScore: document.getElementById('black-score'),
     whiteScore: document.getElementById('white-score'),
     difficultySelector: document.getElementById('difficulty'),
-    restartButton: document.getElementById('restart-button')
+    restartButton: document.getElementById('restart-button'),
+    undoButton: document.getElementById('undo-button'),
+    helpButton: document.getElementById('help-button'),
+    helpSection: document.getElementById('help-section'),
+    moveCounter: document.getElementById('move-counter'),
+    boardCoverage: document.getElementById('board-coverage')
 };
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', initGame);
 DOM.restartButton.addEventListener('click', restartGame);
+DOM.undoButton.addEventListener('click', undoLastMove);
+DOM.helpButton.addEventListener('click', toggleHelp);
 DOM.difficultySelector.addEventListener('change', () => {
     const { currentPlayer, computerDisc, isGameOver } = gameState;
     if (currentPlayer === computerDisc && !isGameOver) {
@@ -47,14 +57,24 @@ DOM.difficultySelector.addEventListener('change', () => {
     }
 });
 
+// Add keyboard navigation support
+document.addEventListener('keydown', handleKeyboardInput);
+
 /**
  * Initialize the game
  */
 function initGame() {
     createGameBoard();
-    initializeBoard();
+    
+    // Try to load saved state, otherwise initialize new game
+    if (!loadGameState()) {
+        initializeBoard();
+    }
+    
     renderBoard();
     updateScores();
+    updateMoveCounter();
+    updateUndoButton();
 }
 
 /**
@@ -70,6 +90,8 @@ function createGameBoard() {
             cell.className = 'cell';
             cell.dataset.row = row;
             cell.dataset.col = col;
+            cell.tabIndex = 0;
+            cell.setAttribute('aria-label', `Cell ${row + 1}, ${col + 1}`);
             
             // Use arrow function to maintain context
             cell.addEventListener('click', () => handleCellClick(row, col));
@@ -99,9 +121,15 @@ function initializeBoard() {
     gameState.playerDisc = BLACK;
     gameState.computerDisc = WHITE;
     gameState.isComputerThinking = false;
+    gameState.moveHistory = [];
+    gameState.moveCounter = 0;
+    gameState.lastMove = null;
     
     // Update UI
     updateStatusMessage();
+    updateMoveCounter();
+    updateUndoButton();
+    saveGameState();
 }
 
 /**
@@ -110,11 +138,18 @@ function initializeBoard() {
 function renderBoard() {
     const cells = document.querySelectorAll('.cell');
     
-    // Clear valid move indicators
+    // Clear valid move indicators and last move indicators
     cells.forEach(cell => {
-        cell.classList.remove('valid-move');
+        cell.classList.remove('valid-move', 'last-move');
         cell.innerHTML = '';
     });
+    
+    // Mark last move
+    if (gameState.lastMove) {
+        const [lastRow, lastCol] = gameState.lastMove;
+        const lastMoveIndex = lastRow * BOARD_SIZE + lastCol;
+        cells[lastMoveIndex].classList.add('last-move');
+    }
     
     // Mark valid moves for current player
     if (gameState.currentPlayer === gameState.playerDisc) {
@@ -134,6 +169,12 @@ function renderBoard() {
                 const disc = document.createElement('div');
                 const discColor = cellValue === BLACK ? 'black' : 'white';
                 disc.className = `disc ${discColor}`;
+                
+                // Add animation class for new discs
+                if (gameState.lastMove && gameState.lastMove[0] === row && gameState.lastMove[1] === col) {
+                    disc.classList.add('new-disc');
+                }
+                
                 cells[cellIndex].appendChild(disc);
             }
         }
@@ -155,10 +196,18 @@ function handleCellClick(row, col) {
     
     // Check if the move is valid
     if (isValidMove(board, row, col, currentPlayer)) {
+        // Save game state for undo functionality
+        saveToHistory();
+        
         // Make the move
         makeMove(board, row, col, currentPlayer);
+        gameState.lastMove = [row, col];
+        gameState.moveCounter++;
+        
         renderBoard();
         updateScores();
+        updateMoveCounter();
+        updateUndoButton();
         
         // Switch player
         gameState.currentPlayer = computerDisc;
@@ -166,6 +215,9 @@ function handleCellClick(row, col) {
         
         // Check game state - this might change player turn if no valid moves
         checkGameState();
+        
+        // Save game state to localStorage
+        saveGameState();
         
         // If game is not over and it's still computer's turn, make computer move
         if (!gameState.isGameOver && gameState.currentPlayer === computerDisc) {
@@ -185,6 +237,7 @@ function makeComputerMove() {
     }
     
     gameState.isComputerThinking = true;
+    DOM.gameBoard.classList.add('loading');
     updateStatusMessage();
     
     // Short delay to show "thinking" message
@@ -195,6 +248,7 @@ function makeComputerMove() {
             // Computer has no valid moves
             gameState.currentPlayer = playerDisc;
             gameState.isComputerThinking = false;
+            DOM.gameBoard.classList.remove('loading');
             updateStatusMessage();
             checkGameState();
             return;
@@ -219,16 +273,24 @@ function makeComputerMove() {
         
         // Make the move
         makeMove(board, row, col, computerDisc);
+        gameState.lastMove = [row, col];
+        gameState.moveCounter++;
+        
         renderBoard();
         updateScores();
+        updateMoveCounter();
         
         // Switch player
         gameState.currentPlayer = playerDisc;
         gameState.isComputerThinking = false;
+        DOM.gameBoard.classList.remove('loading');
         updateStatusMessage();
         
         // Check game state
         checkGameState();
+        
+        // Save game state to localStorage
+        saveGameState();
     }, 1000);
 }
 
@@ -495,6 +557,11 @@ function updateScores() {
     // Make sure to convert to string when setting textContent
     DOM.blackScore.textContent = String(counts.black);
     DOM.whiteScore.textContent = String(counts.white);
+    
+    // Update board coverage
+    const totalDiscs = counts.black + counts.white;
+    const coverage = Math.round((totalDiscs / (BOARD_SIZE * BOARD_SIZE)) * 100);
+    DOM.boardCoverage.textContent = `${coverage}%`;
 }
 
 /**
@@ -503,20 +570,24 @@ function updateScores() {
 function updateStatusMessage() {
     const { isGameOver, isComputerThinking, currentPlayer, playerDisc } = gameState;
     
+    // Remove any existing status classes
+    DOM.statusMessage.classList.remove('thinking');
+    
     if (isGameOver) {
         const blackCount = parseInt(DOM.blackScore.textContent);
         const whiteCount = parseInt(DOM.whiteScore.textContent);
         
         // Use template literals for better readability
         if (blackCount > whiteCount) {
-            DOM.statusMessage.textContent = 'Black wins!';
+            DOM.statusMessage.textContent = 'Black wins! 🎉';
         } else if (whiteCount > blackCount) {
-            DOM.statusMessage.textContent = 'White wins!';
+            DOM.statusMessage.textContent = 'White wins! 🎉';
         } else {
-            DOM.statusMessage.textContent = "It's a tie!";
+            DOM.statusMessage.textContent = "It's a tie! 🤝";
         }
     } else if (isComputerThinking) {
         DOM.statusMessage.textContent = 'Computer is thinking...';
+        DOM.statusMessage.classList.add('thinking');
     } else if (currentPlayer === playerDisc) {
         DOM.statusMessage.textContent = 'Your turn';
     } else {
@@ -559,4 +630,187 @@ function restartGame() {
     initializeBoard();
     renderBoard();
     updateScores();
+}
+
+/**
+ * Update the move counter display
+ */
+function updateMoveCounter() {
+    DOM.moveCounter.textContent = gameState.moveCounter;
+}
+
+/**
+ * Update the undo button state
+ */
+function updateUndoButton() {
+    DOM.undoButton.disabled = gameState.moveHistory.length === 0 || gameState.isComputerThinking;
+}
+
+/**
+ * Save current game state to history for undo functionality
+ */
+function saveToHistory() {
+    const state = {
+        board: gameState.board.map(row => [...row]),
+        currentPlayer: gameState.currentPlayer,
+        lastMove: gameState.lastMove,
+        moveCounter: gameState.moveCounter
+    };
+    gameState.moveHistory.push(state);
+    
+    // Limit history to last 10 moves to prevent memory issues
+    if (gameState.moveHistory.length > 10) {
+        gameState.moveHistory.shift();
+    }
+}
+
+/**
+ * Undo the last move
+ */
+function undoLastMove() {
+    if (gameState.moveHistory.length === 0 || gameState.isComputerThinking || gameState.isGameOver) {
+        return;
+    }
+    
+    // Restore the last saved state
+    const lastState = gameState.moveHistory.pop();
+    gameState.board = lastState.board;
+    gameState.currentPlayer = lastState.currentPlayer;
+    gameState.lastMove = lastState.lastMove;
+    gameState.moveCounter = lastState.moveCounter;
+    
+    // Update UI
+    renderBoard();
+    updateScores();
+    updateMoveCounter();
+    updateUndoButton();
+    updateStatusMessage();
+    saveGameState();
+}
+
+/**
+ * Save game state to localStorage
+ */
+function saveGameState() {
+    try {
+        const state = {
+            board: gameState.board,
+            currentPlayer: gameState.currentPlayer,
+            moveCounter: gameState.moveCounter,
+            lastMove: gameState.lastMove,
+            playerDisc: gameState.playerDisc,
+            computerDisc: gameState.computerDisc
+        };
+        localStorage.setItem('reversiGameState', JSON.stringify(state));
+    } catch (e) {
+        // Ignore localStorage errors
+    }
+}
+
+/**
+ * Load game state from localStorage
+ */
+function loadGameState() {
+    try {
+        const saved = localStorage.getItem('reversiGameState');
+        if (saved) {
+            const state = JSON.parse(saved);
+            gameState.board = state.board;
+            gameState.currentPlayer = state.currentPlayer;
+            gameState.moveCounter = state.moveCounter || 0;
+            gameState.lastMove = state.lastMove;
+            gameState.playerDisc = state.playerDisc || BLACK;
+            gameState.computerDisc = state.computerDisc || WHITE;
+            return true;
+        }
+    } catch (e) {
+        // Ignore localStorage errors
+    }
+    return false;
+}
+
+/**
+ * Handle keyboard input for accessibility
+ */
+function handleKeyboardInput(event) {
+    // Only handle keyboard input when it's the player's turn
+    if (gameState.currentPlayer !== gameState.playerDisc || gameState.isGameOver || gameState.isComputerThinking) {
+        return;
+    }
+    
+    // Get currently focused cell or first valid move
+    let focusedCell = document.querySelector('.cell:focus');
+    if (!focusedCell) {
+        const validMoves = getValidMoves(gameState.board, gameState.currentPlayer);
+        if (validMoves.length > 0) {
+            const [row, col] = validMoves[0];
+            const cellIndex = row * BOARD_SIZE + col;
+            focusedCell = document.querySelectorAll('.cell')[cellIndex];
+        }
+    }
+    
+    if (!focusedCell) return;
+    
+    const cells = Array.from(document.querySelectorAll('.cell'));
+    const currentIndex = cells.indexOf(focusedCell);
+    const currentRow = Math.floor(currentIndex / BOARD_SIZE);
+    const currentCol = currentIndex % BOARD_SIZE;
+    
+    let newRow = currentRow;
+    let newCol = currentCol;
+    
+    switch (event.key) {
+        case 'ArrowUp':
+            newRow = Math.max(0, currentRow - 1);
+            event.preventDefault();
+            break;
+        case 'ArrowDown':
+            newRow = Math.min(BOARD_SIZE - 1, currentRow + 1);
+            event.preventDefault();
+            break;
+        case 'ArrowLeft':
+            newCol = Math.max(0, currentCol - 1);
+            event.preventDefault();
+            break;
+        case 'ArrowRight':
+            newCol = Math.min(BOARD_SIZE - 1, currentCol + 1);
+            event.preventDefault();
+            break;
+        case 'Enter':
+        case ' ':
+            handleCellClick(currentRow, currentCol);
+            event.preventDefault();
+            break;
+        case 'u':
+        case 'U':
+            if (event.ctrlKey || event.metaKey) {
+                undoLastMove();
+                event.preventDefault();
+            }
+            break;
+        case 'r':
+        case 'R':
+            if (event.ctrlKey || event.metaKey) {
+                restartGame();
+                event.preventDefault();
+            }
+            break;
+        default:
+            return;
+    }
+    
+    if (newRow !== currentRow || newCol !== currentCol) {
+        const newIndex = newRow * BOARD_SIZE + newCol;
+        cells[newIndex].focus();
+    }
+}
+
+/**
+ * Toggle help section visibility
+ */
+function toggleHelp() {
+    const isVisible = DOM.helpSection.style.display !== 'none';
+    DOM.helpSection.style.display = isVisible ? 'none' : 'block';
+    DOM.helpButton.textContent = isVisible ? 'Help' : 'Hide Help';
+    DOM.helpButton.setAttribute('aria-expanded', !isVisible);
 }

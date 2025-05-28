@@ -24,6 +24,13 @@
             </div>
             
             <div class="status-message" id="status-message" aria-live="polite">Your turn</div>
+            
+            <div class="game-stats">
+                <div class="move-counter">
+                    <span>Move: </span>
+                    <span id="move-counter">0</span>
+                </div>
+            </div>
         </section>
         
         <section class="game-board" id="game-board" aria-label="Reversi game board">
@@ -41,6 +48,7 @@
             </div>
             
             <button id="restart-button" aria-label="Restart the game">Restart Game</button>
+            <button id="undo-button" aria-label="Undo last move" disabled>Undo Move</button>
         </section>
     </main>
     

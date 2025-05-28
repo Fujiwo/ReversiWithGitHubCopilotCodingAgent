@@ -198,3 +198,68 @@ TestFramework.addTest(advancedAISuite, 'Different AI difficulties should make di
         gameState.board = originalBoard;
     }
 });
+
+// Test that the enhanced Hard AI makes better strategic choices
+TestFramework.addTest(advancedAISuite, 'Enhanced Hard AI should prioritize strategic positions over immediate flips', function() {
+    // Create a board with a choice between a high-flip but poor position and a lower-flip but strategic position
+    const testBoard = Array.from({ length: BOARD_SIZE }, 
+        () => Array(BOARD_SIZE).fill(EMPTY));
+    
+    // Set up the standard starting position
+    testBoard[3][3] = WHITE;
+    testBoard[3][4] = BLACK;
+    testBoard[4][3] = BLACK;
+    testBoard[4][4] = WHITE;
+    
+    // Add pieces to create a trap scenario:
+    // - One move will flip more discs immediately but lead to opponent getting a corner
+    // - Another move will flip fewer discs but prevent opponent from getting a corner
+    testBoard[2][2] = BLACK;
+    testBoard[2][3] = BLACK;
+    testBoard[2][4] = BLACK;
+    testBoard[2][5] = EMPTY; // Potential high-flip but poor strategic move for WHITE
+    testBoard[2][6] = WHITE;
+    
+    testBoard[5][5] = BLACK;
+    testBoard[6][6] = EMPTY; // Potential lower-flip but better strategic move for WHITE
+    
+    // Store the original board and temporarily replace it
+    const originalBoard = gameState.board;
+    gameState.board = testBoard;
+    gameState.computerDisc = WHITE;
+    
+    try {
+        // Get valid moves for WHITE
+        const validMoves = getValidMoves(testBoard, WHITE);
+        assertTrue(validMoves.length >= 2, 'There should be at least two valid moves for this test');
+        
+        // Ensure the "trap" move is available
+        const trapMoveAvailable = validMoves.some(move => move[0] === 2 && move[1] === 5);
+        assertTrue(trapMoveAvailable, 'The trap move should be available');
+        
+        // Count flips for each move to identify the high-flip and strategic moves
+        const moveFlips = validMoves.map(([row, col]) => ({
+            row,
+            col,
+            flips: countFlips(testBoard, row, col, WHITE)
+        }));
+        
+        // Get the move with the most flips
+        const highFlipMove = moveFlips.reduce((max, move) => 
+            move.flips > max.flips ? move : max, moveFlips[0]);
+        
+        // Make the Hard AI choose its move
+        const hardMove = makeHardMove(validMoves);
+        
+        // The hard AI should not choose the high-flip move if it's the trap move
+        if (highFlipMove.row === 2 && highFlipMove.col === 5) {
+            assertFalse(
+                hardMove[0] === highFlipMove.row && hardMove[1] === highFlipMove.col,
+                'Hard AI should avoid the trap move even if it flips more discs'
+            );
+        }
+    } finally {
+        // Restore the original board
+        gameState.board = originalBoard;
+    }
+});

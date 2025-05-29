@@ -841,34 +841,47 @@ function countDiscs(board) {
     return { black, white, total: black + white };
 }
 
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
 /**
- * Count the number of discs that would be flipped by a move
- * @param {Array} board - Game board
- * @param {number} row - Row index
- * @param {number} col - Column index
- * @param {number} player - Player disc color
- * @returns {number} Number of flips
+ * Calculate the number of opponent discs that would be flipped by a proposed move
+ * 
+ * This function is crucial for move validation and AI evaluation. It simulates
+ * placing a disc at the specified position and counts how many opponent discs
+ * would be captured (flipped) according to Reversi rules.
+ * 
+ * The function checks all 8 directions from the proposed position and counts
+ * continuous lines of opponent discs that are bounded by the player's existing discs.
+ * 
+ * @function countFlips
+ * @param {Array<Array<number>>} board - 2D array representing the game board
+ * @param {number} row - Target row index (0-7)
+ * @param {number} col - Target column index (0-7)
+ * @param {number} player - Player disc color (BLACK or WHITE)
+ * @returns {number} Total number of opponent discs that would be flipped
  */
 function countFlips(board, row, col, player) {
-    // If the cell is not empty, no flips are possible
+    // Cannot place disc on occupied cell
     if (board[row][col] !== EMPTY) {
         return 0;
     }
     
+    // Sum flips across all 8 directions using functional approach
     return DIRECTIONS.reduce((totalFlips, [dx, dy]) => {
         let x = row + dx;
         let y = col + dy;
         let tempFlips = 0;
         
-        // Count opponent discs that would be flipped in this direction
+        // Count consecutive opponent discs in this direction
         while (isInBounds(x, y) && board[x][y] !== EMPTY && board[x][y] !== player) {
             tempFlips++;
             x += dx;
             y += dy;
         }
         
-        // If we reach a player disc at the end of the line, count the flips
-        // Otherwise, no flips in this direction
+        // Flips are only valid if the line ends with player's disc
         if (isInBounds(x, y) && board[x][y] === player && tempFlips > 0) {
             totalFlips += tempFlips;
         }
@@ -878,10 +891,15 @@ function countFlips(board, row, col, player) {
 }
 
 /**
- * Check if coordinates are within board bounds
- * @param {number} x - Row index
- * @param {number} y - Column index
- * @returns {boolean} True if in bounds
+ * Validate that coordinates fall within the game board boundaries
+ * 
+ * Simple bounds checking utility used throughout the game logic to prevent
+ * array index out-of-bounds errors when checking adjacent cells.
+ * 
+ * @function isInBounds
+ * @param {number} x - Row coordinate to check
+ * @param {number} y - Column coordinate to check  
+ * @returns {boolean} True if coordinates are within valid board range (0-7), false otherwise
  */
 function isInBounds(x, y) {
     return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
@@ -991,13 +1009,24 @@ function makeMove(board, row, col, player) {
     });
 }
 
+// =============================================================================
+// UI UPDATE FUNCTIONS
+// =============================================================================
+
 /**
- * Update the scores display
+ * Update the score display to reflect current disc counts
+ * 
+ * Counts all black and white discs on the board and updates the score display
+ * elements. Also calculates and displays the board coverage percentage.
+ * Uses modern array methods for efficient counting.
+ * 
+ * @function updateScores
+ * @returns {void}
  */
 function updateScores() {
     const { board } = gameState;
     
-    // Use reduce for a more modern counting approach
+    // Count discs using modern functional programming approach
     const counts = board.flat().reduce((acc, cell) => {
         if (cell === BLACK) acc.black++;
         else if (cell === WHITE) acc.white++;
@@ -1065,7 +1094,7 @@ function checkGameState() {
         // Player has no valid moves, switch to computer
         gameState.currentPlayer = computerDisc;
         updateStatusMessage();
-        setTimeout(makeComputerMove, 500);
+        setTimeout(makeComputerMove, AI_CONSTANTS.THINKING_DELAY);
     } else if (gameState.currentPlayer === computerDisc && computerMoves.length === 0) {
         // Computer has no valid moves, switch to player
         gameState.currentPlayer = playerDisc;

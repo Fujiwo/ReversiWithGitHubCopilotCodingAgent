@@ -318,70 +318,87 @@ function renderBoard() {
 }
 
 /**
- * Handle a cell click
- * @param {number} row - Row index
- * @param {number} col - Column index
+ * Handle user interaction with a game board cell
+ * 
+ * This function processes player clicks (or keyboard interactions) with board cells.
+ * It validates the move, updates the game state, renders changes, and triggers
+ * the computer's response move if appropriate.
+ * 
+ * @function handleCellClick
+ * @param {number} row - Zero-based row index (0-7)
+ * @param {number} col - Zero-based column index (0-7)
+ * @returns {void}
  */
 function handleCellClick(row, col) {
     const { currentPlayer, playerDisc, computerDisc, isGameOver, isComputerThinking, board } = gameState;
     
-    // Ignore clicks if it's not the player's turn or game is over
+    // Prevent interaction during invalid game states
     if (currentPlayer !== playerDisc || isGameOver || isComputerThinking) {
         return;
     }
     
-    // Check if the move is valid
+    // Validate the proposed move according to Reversi rules
     if (isValidMove(board, row, col, currentPlayer)) {
-        // Save game state for undo functionality
+        // Preserve current state for undo functionality
         saveToHistory();
         
-        // Make the move
+        // Execute the move and update game state
         makeMove(board, row, col, currentPlayer);
         gameState.lastMove = [row, col];
         gameState.moveCounter++;
         
+        // Update all UI elements to reflect the new state
         renderBoard();
         updateScores();
         updateMoveCounter();
         updateUndoButton();
         
-        // Switch player
+        // Switch turn to computer player
         gameState.currentPlayer = computerDisc;
         updateStatusMessage();
         
-        // Check game state - this might change player turn if no valid moves
+        // Check if game has ended or if players have valid moves
         checkGameState();
         
-        // Save game state to localStorage
+        // Persist current state to browser storage
         saveGameState();
         
-        // If game is not over and it's still computer's turn, make computer move
+        // Schedule computer move if game continues and it's computer's turn
         if (!gameState.isGameOver && gameState.currentPlayer === computerDisc) {
-            setTimeout(makeComputerMove, 500); // Delay for better UX
+            setTimeout(makeComputerMove, AI_CONSTANTS.THINKING_DELAY);
         }
     }
 }
 
 /**
- * Make a computer move based on the selected difficulty
+ * Execute a computer move based on the selected AI difficulty level
+ * 
+ * This function implements the AI opponent logic. It shows a "thinking" state,
+ * calculates the best move according to the difficulty setting, and executes
+ * the move with appropriate UI feedback.
+ * 
+ * @function makeComputerMove
+ * @returns {void}
  */
 function makeComputerMove() {
     const { isGameOver, currentPlayer, computerDisc, playerDisc, board } = gameState;
     
+    // Exit early if game conditions don't allow computer move
     if (isGameOver || currentPlayer !== computerDisc) {
         return;
     }
     
+    // Enter "thinking" state with visual feedback
     gameState.isComputerThinking = true;
     DOM.gameBoard.classList.add('loading');
     updateStatusMessage();
     
-    // Short delay to show "thinking" message
+    // Artificial delay for better user experience (shows AI is "thinking")
     setTimeout(() => {
         const validMoves = getValidMoves(board, computerDisc);
         
+        // Handle case where computer has no valid moves
         if (validMoves.length === 0) {
-            // Computer has no valid moves
             gameState.currentPlayer = playerDisc;
             gameState.isComputerThinking = false;
             DOM.gameBoard.classList.remove('loading');
@@ -390,10 +407,10 @@ function makeComputerMove() {
             return;
         }
         
+        // Select move based on difficulty level using strategy pattern
         const difficulty = DOM.difficultySelector.value;
         let moveCoordinates;
         
-        // Use object literal for cleaner switch replacement
         const difficultyStrategies = {
             'easy': () => makeEasyMove(validMoves),
             'medium': () => makeMediumMove(validMoves),
@@ -430,48 +447,66 @@ function makeComputerMove() {
     }, 1000);
 }
 
+// =============================================================================
+// AI STRATEGY IMPLEMENTATIONS
+// =============================================================================
+
 /**
- * Make an easy move (random selection)
- * @param {Array} validMoves - Array of valid moves
- * @returns {Array} Selected move coordinates [row, col]
+ * Easy AI Strategy: Random move selection
+ * 
+ * This is the simplest AI strategy that randomly selects from all valid moves.
+ * Provides an unpredictable but generally weak opponent suitable for beginners.
+ * 
+ * @function makeEasyMove
+ * @param {Array<Array<number>>} validMoves - Array of valid move coordinates [[row, col], ...]
+ * @returns {Array<number>} Selected move coordinates [row, col]
  */
 function makeEasyMove(validMoves) {
-    // If there's only one valid move, return it
+    // Single move scenario - no choice needed
     if (validMoves.length === 1) {
         return validMoves[0];
     }
     
+    // Select random move from available options
     const randomIndex = Math.floor(Math.random() * validMoves.length);
     return validMoves[randomIndex];
 }
 
 /**
- * Make a medium move (prioritize corners and edges)
- * @param {Array} validMoves - Array of valid moves
- * @returns {Array} Selected move coordinates [row, col]
+ * Medium AI Strategy: Positional preference with corner/edge priority
+ * 
+ * This strategy implements basic Reversi positional knowledge:
+ * - Corners are most valuable (score: 10) - they can't be flipped
+ * - Edges are moderately valuable (score: 5) - harder to attack
+ * - Positions adjacent to corners are avoided when possible (score: 0.1)
+ * - All other positions have neutral value (score: 1)
+ * 
+ * @function makeMediumMove  
+ * @param {Array<Array<number>>} validMoves - Array of valid move coordinates
+ * @returns {Array<number>} Selected move coordinates [row, col]
  */
 function makeMediumMove(validMoves) {
-    // If there's only one valid move, return it
+    // Single move scenario - no choice needed
     if (validMoves.length === 1) {
         return validMoves[0];
     }
     
-    // Score map for medium difficulty (prioritize corners and edges)
+    // Create positional scoring matrix for strategic evaluation
     const scoreMap = Array.from({ length: BOARD_SIZE }, 
         () => Array(BOARD_SIZE).fill(1));
     
-    // Corners have highest priority
+    // Define corner positions (highest strategic value)
     const corners = [
         [0, 0], [0, BOARD_SIZE - 1], 
         [BOARD_SIZE - 1, 0], [BOARD_SIZE - 1, BOARD_SIZE - 1]
     ];
     
-    // Set corner values
+    // Assign high scores to corner positions
     corners.forEach(([row, col]) => {
-        scoreMap[row][col] = 10;
+        scoreMap[row][col] = AI_CONSTANTS.POSITION_WEIGHTS.CORNER / 10; // Scale to 10
     });
     
-    // Edges have medium priority
+    // Assign medium scores to edge positions (excluding corners)
     for (let i = 1; i < BOARD_SIZE - 1; i++) {
         scoreMap[0][i] = 5;                   // Top edge
         scoreMap[BOARD_SIZE - 1][i] = 5;      // Bottom edge
@@ -479,7 +514,7 @@ function makeMediumMove(validMoves) {
         scoreMap[i][BOARD_SIZE - 1] = 5;      // Right edge
     }
     
-    // Avoid cells next to corners if possible
+    // Positions adjacent to corners are generally poor choices
     const adjacentCorners = [
         [0, 1], [1, 0], [1, 1],
         [0, BOARD_SIZE - 2], [1, BOARD_SIZE - 1], [1, BOARD_SIZE - 2],
@@ -852,33 +887,54 @@ function isInBounds(x, y) {
     return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
 }
 
+// =============================================================================
+// CORE GAME LOGIC FUNCTIONS
+// =============================================================================
+
 /**
- * Check if a move is valid
- * @param {Array} board - Game board
- * @param {number} row - Row index
- * @param {number} col - Column index
- * @param {number} player - Player disc color
- * @returns {boolean} True if the move is valid
+ * Validate whether a move is legal according to Reversi rules
+ * 
+ * A move is valid if:
+ * 1. The target cell is empty
+ * 2. The move would flip at least one opponent disc
+ * 
+ * This function implements the fundamental rule of Reversi: you can only place
+ * a disc where it will capture (flip) one or more opponent discs by sandwiching
+ * them between the new disc and an existing disc of your color.
+ * 
+ * @function isValidMove
+ * @param {Array<Array<number>>} board - 2D array representing the game board
+ * @param {number} row - Target row index (0-7)
+ * @param {number} col - Target column index (0-7)  
+ * @param {number} player - Player disc color (BLACK or WHITE)
+ * @returns {boolean} True if the move is legal, false otherwise
  */
 function isValidMove(board, row, col, player) {
-    // Cell must be empty
+    // Basic requirement: target cell must be unoccupied
     if (board[row][col] !== EMPTY) {
         return false;
     }
     
-    // A move is valid if it flips at least one opponent disc
+    // Reversi rule: move must flip at least one opponent disc
     return countFlips(board, row, col, player) > 0;
 }
 
 /**
- * Get all valid moves for a player
- * @param {Array} board - Game board
- * @param {number} player - Player disc color
- * @returns {Array} Array of valid move coordinates
+ * Generate all legal moves available to a player
+ * 
+ * Systematically checks every empty cell on the board to determine which
+ * positions would result in valid moves for the specified player. This is
+ * used for move validation, AI decision making, and game state evaluation.
+ * 
+ * @function getValidMoves
+ * @param {Array<Array<number>>} board - 2D array representing the game board
+ * @param {number} player - Player disc color (BLACK or WHITE)
+ * @returns {Array<Array<number>>} Array of valid move coordinates [[row, col], ...]
  */
 function getValidMoves(board, player) {
     const validMoves = [];
     
+    // Scan entire board for valid move positions
     for (let row = 0; row < BOARD_SIZE; row++) {
         for (let col = 0; col < BOARD_SIZE; col++) {
             if (isValidMove(board, row, col, player)) {
@@ -891,23 +947,35 @@ function getValidMoves(board, player) {
 }
 
 /**
- * Make a move and flip appropriate discs
- * @param {Array} board - Game board
- * @param {number} row - Row index
- * @param {number} col - Column index
- * @param {number} player - Player disc color
+ * Execute a move and flip all captured opponent discs
+ * 
+ * This function implements the core Reversi move mechanics:
+ * 1. Places the player's disc at the specified position
+ * 2. Identifies all opponent discs that should be flipped
+ * 3. Flips those discs to the player's color
+ * 
+ * The function checks all 8 directions from the placed disc and flips
+ * any continuous lines of opponent discs that are bounded by another
+ * disc of the player's color.
+ * 
+ * @function makeMove
+ * @param {Array<Array<number>>} board - 2D array representing the game board (modified in place)
+ * @param {number} row - Target row index (0-7)
+ * @param {number} col - Target column index (0-7)
+ * @param {number} player - Player disc color (BLACK or WHITE)
+ * @returns {void}
  */
 function makeMove(board, row, col, player) {
-    // Place the player's disc
+    // Place the player's disc at the target position
     board[row][col] = player;
     
-    // Flip discs in all valid directions
+    // Check all 8 directions and flip opponent discs
     DIRECTIONS.forEach(([dx, dy]) => {
         let x = row + dx;
         let y = col + dy;
         const discsToFlip = [];
         
-        // First collect all potential discs to flip in this direction
+        // Collect opponent discs in this direction that could be flipped
         while (isInBounds(x, y) && board[x][y] !== EMPTY && board[x][y] !== player) {
             discsToFlip.push([x, y]);
             x += dx;

@@ -1,5 +1,10 @@
+/* =============================================================================
+   CSS CUSTOM PROPERTIES (VARIABLES)
+   ============================================================================= */
+
 /* CSS Variables for consistent colors and values */
 :root {
+    /* Color Scheme */
     --color-background: #f5f5f5;
     --color-text: #333;
     --color-primary: #2c3e50;
@@ -12,39 +17,118 @@
     --color-white: #fff;
     --color-last-move: #f39c12;
     --color-valid-move: rgba(255, 255, 255, 0.4);
+    
+    /* Spacing System */
+    --space-xs: 5px;
     --space-sm: 10px;
     --space-md: 20px;
     --space-lg: 30px;
+    --space-xl: 40px;
+    
+    /* Layout Properties */
     --border-radius: 4px;
+    --border-radius-lg: 8px;
     --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+    
+    /* Animation Properties */
     --transition-speed: 0.3s;
+    --transition-fast: 0.15s;
     --flip-animation-speed: 0.6s;
+    
+    /* Typography */
+    --font-size-sm: 0.875rem;  /* 14px */
+    --font-size-base: 1rem;    /* 16px */
+    --font-size-lg: 1.125rem;  /* 18px */
+    --font-size-xl: 1.25rem;   /* 20px */
+    --font-size-2xl: 1.5rem;   /* 24px */
+    --font-size-3xl: 2rem;     /* 32px */
 }
 
-/* General Styles */
+/* =============================================================================
+   GLOBAL STYLES & RESET
+   ============================================================================= */
+
+/* Modern CSS reset with box-sizing */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* Base body styles with modern font stack */
 body {
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
     background-color: var(--color-background);
     color: var(--color-text);
     line-height: 1.6;
     padding: var(--space-md);
+    font-size: var(--font-size-base);
 }
 
+/* Container with responsive max-width */
 .container {
-    max-width: 600px;
+    max-width: min(600px, 100vw - 2rem);
     margin: 0 auto;
     text-align: center;
 }
 
-h1 {
-    margin-bottom: var(--space-md);
+/* =============================================================================
+   ACCESSIBILITY UTILITIES
+   ============================================================================= */
+
+/* Screen reader only content */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Skip navigation link for accessibility */
+.skip-nav {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--color-primary);
+    color: var(--color-white);
+    padding: 8px;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    z-index: 1000;
+    transition: top var(--transition-fast);
+}
+
+.skip-nav:focus {
+    top: 6px;
+}
+
+/* =============================================================================
+   TYPOGRAPHY & HEADERS
+   ============================================================================= */
+
+/* Main game header */
+.game-header {
+    margin-bottom: var(--space-lg);
+}
+
+.game-header h1 {
+    font-size: clamp(var(--font-size-2xl), 5vw, var(--font-size-3xl));
     color: var(--color-primary);
+    margin-bottom: var(--space-xs);
+    font-weight: 700;
+}
+
+.game-subtitle {
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+    opacity: 0.8;
+    margin: 0;
 }
 
 /* Game Info Styles */
@@ -268,86 +352,198 @@ h1 {
     }
 }
 
-/* Controls Styles */
+/* =============================================================================
+   CONTROLS & BUTTONS
+   ============================================================================= */
+
+/* Controls container */
 .controls {
     margin-top: var(--space-md);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: var(--space-md);
 }
 
+/* Difficulty selector styling */
 .difficulty-selector {
-    margin-bottom: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
 }
 
+.difficulty-selector label {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+/* Button group for better organization */
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: center;
+}
+
+/* Base button and select styles */
 select, button {
-    padding: 8px 16px;
-    font-size: 16px;
+    padding: clamp(6px, 2vw, 8px) clamp(12px, 4vw, 16px);
+    font-size: var(--font-size-base);
     border: none;
     border-radius: var(--border-radius);
     background-color: var(--color-secondary);
     color: var(--color-white);
     cursor: pointer;
-    transition: background-color var(--transition-speed);
+    transition: all var(--transition-speed);
+    font-family: inherit;
+    font-weight: 500;
 }
 
+/* Select specific styles */
 select {
     background-color: var(--color-white);
     color: var(--color-text);
-    border: 1px solid #ddd;
+    border: 2px solid var(--color-secondary);
+    min-width: 120px;
 }
 
-button:hover {
+select:focus {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+}
+
+/* Button hover and focus states */
+button:hover:not(:disabled) {
     background-color: var(--color-secondary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
 }
 
+button:focus {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+}
+
+button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Disabled button styles */
 button:disabled {
     background-color: #bdc3c7;
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
 }
 
 button:disabled:hover {
     background-color: #bdc3c7;
+    transform: none;
 }
 
-/* Help Section Styles */
+/* =============================================================================
+   HELP SECTION
+   ============================================================================= */
+
+/* Help section container with modern styling */
 .help-section {
-    margin-top: var(--space-md);
+    margin-top: var(--space-lg);
     background-color: var(--color-white);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    padding: var(--space-md);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-lg);
     max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-    animation: slideDown 0.3s ease-out;
+    margin-inline: auto;
+    animation: slideDown var(--transition-speed) ease-out;
 }
 
+/* Slide down animation for help panel */
 @keyframes slideDown {
-    0% {
+    from {
         opacity: 0;
         transform: translateY(-10px);
     }
-    100% {
+    to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
+/* Help content typography */
 .help-content h3 {
     color: var(--color-primary);
-    margin-bottom: var(--space-sm);
-    font-size: 1.1rem;
+    margin-bottom: var(--space-md);
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    border-bottom: 2px solid var(--color-secondary);
+    padding-bottom: var(--space-xs);
 }
 
+.help-content h4 {
+    color: var(--color-primary);
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+/* Help articles with better spacing */
+.help-rules,
+.help-keyboard {
+    margin-bottom: var(--space-lg);
+}
+
+.help-rules:last-child,
+.help-keyboard:last-child {
+    margin-bottom: 0;
+}
+
+/* List styling for rules */
 .help-content ul {
     margin-bottom: var(--space-md);
-    padding-left: var(--space-md);
+    padding-left: var(--space-lg);
+    list-style-type: disc;
 }
 
 .help-content li {
+    margin-bottom: var(--space-xs);
+    line-height: 1.6;
+    text-align: left;
+}
+
+/* Keyboard shortcuts definition list */
+.keyboard-shortcuts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.keyboard-shortcuts dt {
+    font-weight: 600;
+    text-align: right;
+}
+
+.keyboard-shortcuts dd {
+    text-align: left;
+    margin: 0;
+}
+
+/* Keyboard key styling */
+kbd {
+    background-color: var(--color-background);
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2), inset 0 0 0 2px #fff;
+    color: var(--color-text);
+    display: inline-block;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    margin: 0 2px;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
     margin-bottom: 5px;
     line-height: 1.4;
 }

@@ -1,55 +1,164 @@
 /**
  * Reversi Game Implementation
  * 
- * This file contains the core game logic and AI implementation for the Reversi game.
+ * A modern implementation of the classic Reversi (also known as Othello) board game.
+ * Features an AI opponent with multiple difficulty levels, undo functionality,
+ * keyboard navigation, and comprehensive accessibility support.
+ * 
+ * @author Reversi Game
+ * @version 1.0.0
  */
 
-// Game constants
-const BOARD_SIZE = 8;
-const EMPTY = 0;
-const BLACK = 1;
-const WHITE = 2;
+// =============================================================================
+// GAME CONSTANTS
+// =============================================================================
 
-// Direction vectors for checking valid moves (diagonal, horizontal, vertical)
+/** Standard Reversi board dimensions (8x8 grid) */
+const BOARD_SIZE = 8;
+
+/** Cell state constants for board representation */
+const EMPTY = 0;  // Empty cell
+const BLACK = 1;  // Black disc (player typically starts as black)
+const WHITE = 2;  // White disc (computer typically plays as white)
+
+/** 
+ * Direction vectors for move validation and disc flipping
+ * Represents all 8 possible directions from any cell:
+ * Top-left, Top, Top-right, Left, Right, Bottom-left, Bottom, Bottom-right
+ */
 const DIRECTIONS = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],           [0, 1],
-    [1, -1],  [1, 0],  [1, 1]
+    [-1, -1], [-1, 0], [-1, 1],  // Top row: NW, N, NE
+    [0, -1],           [0, 1],   // Middle row: W, E (center position excluded)
+    [1, -1],  [1, 0],  [1, 1]    // Bottom row: SW, S, SE
 ];
 
-// Game state variables
+/** 
+ * AI difficulty settings and timing constants
+ */
+const AI_CONSTANTS = {
+    THINKING_DELAY: 500,           // Milliseconds to show "thinking" message
+    ANIMATION_DURATION: 300,       // Duration for disc flip animations
+    POSITION_WEIGHTS: {            // Strategic value of board positions
+        CORNER: 100,               // Corners are most valuable
+        EDGE: 10,                  // Edges are moderately valuable
+        ADJACENT_TO_CORNER: -25,   // Positions next to corners are risky
+        CENTER: 1                  // Center positions have base value
+    }
+};
+
+/** Keyboard navigation constants */
+const KEYBOARD = {
+    ARROW_UP: 'ArrowUp',
+    ARROW_DOWN: 'ArrowDown', 
+    ARROW_LEFT: 'ArrowLeft',
+    ARROW_RIGHT: 'ArrowRight',
+    ENTER: 'Enter',
+    SPACE: ' ',
+    ESCAPE: 'Escape'
+};
+
+// =============================================================================
+// GAME STATE MANAGEMENT  
+// =============================================================================
+
+/**
+ * Central game state object containing all game-related data
+ * This object maintains the current state of the game including board position,
+ * player information, and UI state.
+ */
 const gameState = {
+    /** 2D array representing the game board (8x8 grid) */
     board: [],
-    currentPlayer: BLACK, // Black always starts
+    
+    /** Current player (BLACK or WHITE) - Black always starts first */
+    currentPlayer: BLACK,
+    
+    /** Flag indicating if the game has ended */
     isGameOver: false,
+    
+    /** Which disc color the human player is using */
     playerDisc: BLACK,
+    
+    /** Which disc color the computer AI is using */
     computerDisc: WHITE,
+    
+    /** Flag indicating if the computer is currently calculating its move */
     isComputerThinking: false,
+    
+    /** Array storing previous game states for undo functionality */
     moveHistory: [],
+    
+    /** Total number of moves made in the current game */
     moveCounter: 0,
+    
+    /** Coordinates of the last move made [row, col] or null */
     lastMove: null
 };
 
-// DOM elements - using const for elements that won't be reassigned
+// =============================================================================
+// DOM ELEMENT REFERENCES
+// =============================================================================
+
+/**
+ * Cached DOM element references for performance optimization
+ * Using const ensures these references won't be accidentally reassigned
+ */
 const DOM = {
+    /** Main game board container element */
     gameBoard: document.getElementById('game-board'),
+    
+    /** Status message display element */
     statusMessage: document.getElementById('status-message'),
+    
+    /** Black player score display */
     blackScore: document.getElementById('black-score'),
+    
+    /** White player score display */
     whiteScore: document.getElementById('white-score'),
+    
+    /** AI difficulty level selector */
     difficultySelector: document.getElementById('difficulty'),
+    
+    /** Game restart button */
     restartButton: document.getElementById('restart-button'),
+    
+    /** Undo last move button */
     undoButton: document.getElementById('undo-button'),
+    
+    /** Help section toggle button */
     helpButton: document.getElementById('help-button'),
+    
+    /** Help content section */
     helpSection: document.getElementById('help-section'),
+    
+    /** Move counter display */
     moveCounter: document.getElementById('move-counter'),
+    
+    /** Board coverage percentage display */
     boardCoverage: document.getElementById('board-coverage')
 };
 
-// Event listeners
+// =============================================================================
+// EVENT LISTENERS SETUP
+// =============================================================================
+
+/**
+ * Initialize event listeners when the DOM is fully loaded
+ * This ensures all DOM elements are available before accessing them
+ */
 document.addEventListener('DOMContentLoaded', initGame);
+
+/**
+ * Button event listeners for game controls
+ */
 DOM.restartButton.addEventListener('click', restartGame);
 DOM.undoButton.addEventListener('click', undoLastMove);
 DOM.helpButton.addEventListener('click', toggleHelp);
+
+/**
+ * Difficulty selector change handler
+ * Automatically triggers computer move if it's currently the computer's turn
+ */
 DOM.difficultySelector.addEventListener('change', () => {
     const { currentPlayer, computerDisc, isGameOver } = gameState;
     if (currentPlayer === computerDisc && !isGameOver) {
@@ -57,11 +166,24 @@ DOM.difficultySelector.addEventListener('change', () => {
     }
 });
 
-// Add keyboard navigation support
+/**
+ * Global keyboard navigation support for accessibility
+ * Enables keyboard-only game interaction
+ */
 document.addEventListener('keydown', handleKeyboardInput);
 
+// =============================================================================
+// CORE GAME FUNCTIONS
+// =============================================================================
+
 /**
- * Initialize the game
+ * Initialize the game application
+ * 
+ * This is the main entry point called when the DOM is ready.
+ * It sets up the game board, loads any saved state, and initializes the UI.
+ * 
+ * @function initGame
+ * @returns {void}
  */
 function initGame() {
     createGameBoard();
@@ -78,22 +200,28 @@ function initGame() {
 }
 
 /**
- * Create the game board in the DOM
+ * Create the interactive game board in the DOM
+ * 
+ * Generates an 8x8 grid of clickable cells with proper accessibility attributes.
+ * Each cell is equipped with event listeners for mouse and keyboard interaction.
+ * 
+ * @function createGameBoard
+ * @returns {void}
  */
 function createGameBoard() {
     DOM.gameBoard.innerHTML = '';
     
-    // Using template literals for more readable element creation
+    // Create 64 cells (8x8 grid) with proper accessibility support
     for (let row = 0; row < BOARD_SIZE; row++) {
         for (let col = 0; col < BOARD_SIZE; col++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
             cell.dataset.row = row;
             cell.dataset.col = col;
-            cell.tabIndex = 0;
+            cell.tabIndex = 0;  // Make focusable for keyboard navigation
             cell.setAttribute('aria-label', `Cell ${row + 1}, ${col + 1}`);
             
-            // Use arrow function to maintain context
+            // Use arrow function to maintain proper 'this' context
             cell.addEventListener('click', () => handleCellClick(row, col));
             DOM.gameBoard.appendChild(cell);
         }
@@ -101,35 +229,43 @@ function createGameBoard() {
 }
 
 /**
- * Initialize the board with starting positions
+ * Initialize the board with standard Reversi starting positions
+ * 
+ * Sets up the classic 2x2 center configuration:
+ * - White discs at positions (3,3) and (4,4)  
+ * - Black discs at positions (3,4) and (4,3)
+ * Also resets all game state variables to their initial values.
+ * 
+ * @function initializeBoard  
+ * @returns {void}
  */
 function initializeBoard() {
-    // Create empty board using Array.from for more modern approach
+    // Create empty 8x8 board using modern Array methods
     gameState.board = Array.from({ length: BOARD_SIZE }, 
         () => Array(BOARD_SIZE).fill(EMPTY));
     
-    // Set up starting positions
-    const mid = BOARD_SIZE / 2;
-    gameState.board[mid - 1][mid - 1] = WHITE;
-    gameState.board[mid - 1][mid] = BLACK;
-    gameState.board[mid][mid - 1] = BLACK;
-    gameState.board[mid][mid] = WHITE;
+    // Set up the classic Reversi starting position in the center
+    const mid = BOARD_SIZE / 2;  // mid = 4
+    gameState.board[mid - 1][mid - 1] = WHITE;  // Position (3,3)
+    gameState.board[mid - 1][mid] = BLACK;      // Position (3,4) 
+    gameState.board[mid][mid - 1] = BLACK;      // Position (4,3)
+    gameState.board[mid][mid] = WHITE;          // Position (4,4)
     
-    // Reset game state
-    gameState.currentPlayer = BLACK;
+    // Reset all game state to initial values
+    gameState.currentPlayer = BLACK;        // Black always moves first
     gameState.isGameOver = false;
-    gameState.playerDisc = BLACK;
-    gameState.computerDisc = WHITE;
+    gameState.playerDisc = BLACK;           // Human plays as Black
+    gameState.computerDisc = WHITE;         // AI plays as White
     gameState.isComputerThinking = false;
-    gameState.moveHistory = [];
-    gameState.moveCounter = 0;
-    gameState.lastMove = null;
+    gameState.moveHistory = [];             // Clear move history for undo
+    gameState.moveCounter = 0;              // Reset move counter
+    gameState.lastMove = null;              // No previous move
     
-    // Update UI
+    // Update UI to reflect the new game state
     updateStatusMessage();
     updateMoveCounter();
     updateUndoButton();
-    saveGameState();
+    saveGameState();                        // Persist initial state
 }
 
 /**

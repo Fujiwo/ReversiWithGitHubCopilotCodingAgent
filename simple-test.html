@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Test Runner</title>
+</head>
+<body>
+    <div id="test-results"></div>
+    
+    <!-- Required DOM elements -->
+    <section class="game-info">
+        <div class="score-container">
+            <div class="score black">
+                <span id="black-score">2</span>
+            </div>
+            <div class="score white">
+                <span id="white-score">2</span>
+            </div>
+        </div>
+        <div class="status-message" id="status-message">Your turn</div>
+    </section>
+    
+    <section class="game-board" id="game-board">
+        <!-- Will be filled by JS -->
+    </section>
+    
+    <section class="controls">
+        <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+        <button id="restart-button">Restart Game</button>
+        <button id="undo-button">Undo</button>
+        <button id="help-button">Help</button>
+    </section>
+    
+    <div class="game-stats">
+        <span id="move-counter">0</span>
+        <span id="board-coverage">6%</span>
+    </div>
+    
+    <div id="help-section" style="display: none;">Help</div>
+
+    <script src="reversi.js"></script>
+    
+    <script>
+        // Override initGame to prevent normal initialization
+        function initGame() {
+            // Initialize only the board state without DOM operations
+            gameState.board = Array.from({ length: BOARD_SIZE }, 
+                () => Array(BOARD_SIZE).fill(EMPTY));
+            
+            const mid = BOARD_SIZE / 2;
+            gameState.board[mid - 1][mid - 1] = WHITE;
+            gameState.board[mid - 1][mid] = BLACK;
+            gameState.board[mid][mid - 1] = BLACK;
+            gameState.board[mid][mid] = WHITE;
+            
+            gameState.currentPlayer = BLACK;
+            gameState.isGameOver = false;
+            gameState.playerDisc = BLACK;
+            gameState.computerDisc = WHITE;
+            gameState.isComputerThinking = false;
+            gameState.moveHistory = [];
+            gameState.moveCounter = 0;
+            gameState.lastMove = null;
+        }
+        
+        // Simple test runner
+        function runTest(testName, testFn) {
+            try {
+                console.log(`Running: ${testName}`);
+                
+                // Reset state before each test
+                initGame();
+                
+                testFn();
+                console.log(`✓ PASS: ${testName}`);
+                return true;
+            } catch (error) {
+                console.log(`✗ FAIL: ${testName} - ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Test the updateStatusMessage function
+        function testUpdateStatusMessage() {
+            // Test player's turn message
+            gameState.isGameOver = false;
+            gameState.isComputerThinking = false;
+            gameState.currentPlayer = BLACK;
+            gameState.playerDisc = BLACK;
+            updateStatusMessage();
+            if (DOM.statusMessage.textContent !== 'Your turn') {
+                throw new Error(`Expected "Your turn", got "${DOM.statusMessage.textContent}"`);
+            }
+            
+            // Test computer's turn message
+            gameState.currentPlayer = WHITE;
+            gameState.computerDisc = WHITE;
+            updateStatusMessage();
+            if (DOM.statusMessage.textContent !== "Computer's turn") {
+                throw new Error(`Expected "Computer's turn", got "${DOM.statusMessage.textContent}"`);
+            }
+            
+            // Test game over with black win
+            gameState.isGameOver = true;
+            DOM.blackScore.textContent = '40';
+            DOM.whiteScore.textContent = '24';
+            updateStatusMessage();
+            if (DOM.statusMessage.textContent !== 'Black wins!') {
+                throw new Error(`Expected "Black wins!", got "${DOM.statusMessage.textContent}"`);
+            }
+            
+            // Test game over with white win  
+            DOM.blackScore.textContent = '20';
+            DOM.whiteScore.textContent = '44';
+            updateStatusMessage();
+            if (DOM.statusMessage.textContent !== 'White wins!') {
+                throw new Error(`Expected "White wins!", got "${DOM.statusMessage.textContent}"`);
+            }
+            
+            // Test game over with tie
+            DOM.blackScore.textContent = '32';
+            DOM.whiteScore.textContent = '32';
+            updateStatusMessage();
+            if (DOM.statusMessage.textContent !== "It's a tie!") {
+                throw new Error(`Expected "It's a tie!", got "${DOM.statusMessage.textContent}"`);
+            }
+        }
+        
+        // Test the updateScores function
+        function testUpdateScores() {
+            // Set up a board with known disc counts
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    gameState.board[i][j] = BLACK;
+                }
+            }
+            
+            for (let i = 3; i < 6; i++) {
+                for (let j = 0; j < 4; j++) {
+                    gameState.board[i][j] = WHITE;
+                }
+            }
+            
+            updateScores();
+            
+            if (DOM.blackScore.textContent !== '9') {
+                throw new Error(`Expected black score "9", got "${DOM.blackScore.textContent}"`);
+            }
+            
+            if (DOM.whiteScore.textContent !== '12') {
+                throw new Error(`Expected white score "12", got "${DOM.whiteScore.textContent}"`);
+            }
+        }
+        
+        // Test restartGame function
+        function testRestartGame() {
+            // First, modify the game state
+            gameState.board[0][0] = BLACK;
+            gameState.currentPlayer = WHITE;
+            gameState.isGameOver = true;
+            
+            // Mock DOM functions to prevent errors
+            const originalRenderBoard = renderBoard;
+            const originalUpdateScores = updateScores;
+            
+            renderBoard = function() {}; // Mock
+            updateScores = function() {}; // Mock
+            
+            try {
+                // Restart the game
+                restartGame();
+                
+                // Check that board has been reset to initial state
+                const mid = BOARD_SIZE / 2;
+                if (gameState.board[mid-1][mid-1] !== WHITE) {
+                    throw new Error('Board should be reset to initial state - position (3,3) should be WHITE');
+                }
+                if (gameState.board[mid-1][mid] !== BLACK) {
+                    throw new Error('Board should be reset to initial state - position (3,4) should be BLACK');
+                }
+                if (gameState.board[mid][mid-1] !== BLACK) {
+                    throw new Error('Board should be reset to initial state - position (4,3) should be BLACK');
+                }
+                if (gameState.board[mid][mid] !== WHITE) {
+                    throw new Error('Board should be reset to initial state - position (4,4) should be WHITE');
+                }
+                if (gameState.board[0][0] !== EMPTY) {
+                    throw new Error('Board should be reset to initial state - position (0,0) should be EMPTY');
+                }
+                
+                // Check that game state has been reset
+                if (gameState.currentPlayer !== BLACK) {
+                    throw new Error('Current player should be reset to BLACK');
+                }
+                if (gameState.isGameOver !== false) {
+                    throw new Error('Game over flag should be reset to false');
+                }
+            } finally {
+                // Restore original functions
+                renderBoard = originalRenderBoard;
+                updateScores = originalUpdateScores;
+            }
+        }
+        
+        // Run all tests
+        window.onload = function() {
+            console.log('Starting tests...');
+            
+            let passed = 0;
+            let total = 0;
+            
+            total++; if (runTest('updateStatusMessage should show correct message based on game state', testUpdateStatusMessage)) passed++;
+            total++; if (runTest('updateScores should calculate correct scores', testUpdateScores)) passed++;
+            total++; if (runTest('restartGame should reset the game state', testRestartGame)) passed++;
+            
+            console.log(`\nResults: ${passed}/${total} tests passed`);
+            
+            document.getElementById('test-results').innerHTML = `
+                <h2>Test Results</h2>
+                <p>${passed}/${total} tests passed</p>
+                <p>Check console for detailed output</p>
+            `;
+        };
+    </script>
+</body>
+</html>

@@ -825,11 +825,11 @@ function updateStatusMessage() {
         
         // Use template literals for better readability
         if (blackCount > whiteCount) {
-            DOM.statusMessage.textContent = 'Black wins! 🎉';
+            DOM.statusMessage.textContent = 'Black wins!';
         } else if (whiteCount > blackCount) {
-            DOM.statusMessage.textContent = 'White wins! 🎉';
+            DOM.statusMessage.textContent = 'White wins!';
         } else {
-            DOM.statusMessage.textContent = "It's a tie! 🤝";
+            DOM.statusMessage.textContent = "It's a tie!";
         }
     } else if (isComputerThinking) {
         DOM.statusMessage.textContent = 'Computer is thinking...';
